@@ -27,3 +27,16 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+/out/
+/target/
+*.iml
+.idea/
+.idea/libraries/
+
+### Database Files ###
+# File cơ sở dữ liệu SQLite
+library.db
+*.db-journal
+
+### System Files ###
+.DS_Store
