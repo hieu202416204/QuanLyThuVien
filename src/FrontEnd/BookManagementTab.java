@@ -57,7 +57,7 @@ public class BookManagementTab extends VBox {
         this.setSpacing(10);
     }
 
-    // --- 1. INITIALIZE TABLE (Giữ nguyên) ---
+    // --- 1. INITIALIZE TABLE ---
     private void initializeTable() {
         TableColumn<Book, String> colId = new TableColumn<>("ID");
         colId.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getId()));
@@ -83,15 +83,15 @@ public class BookManagementTab extends VBox {
         bookTable.setItems(bookData);
     }
 
-    // --- 2. INITIALIZE CONTROLS (Giữ nguyên) ---
+    // --- 2. INITIALIZE CONTROLS ---
     private void initializeControls() {
         addBtn.setOnAction(e -> handleAddBook(idField, nameField, authorField, yearField));
         deleteBtn.getStyleClass().add("button-delete");
         deleteBtn.setOnAction(e -> handleDeleteBook());
         viewHistoryBtn.setDisable(true);
-        viewHistoryBtn.setOnAction(e -> handleViewBookHistory()); // Đã sửa
+        viewHistoryBtn.setOnAction(e -> handleViewBookHistory()); 
         editBtn.setDisable(true);
-        editBtn.setOnAction(e -> handleEditBook()); // Đã sửa
+        editBtn.setOnAction(e -> handleEditBook()); 
 
         controls = new HBox(10, idField, nameField, authorField, yearField, addBtn, deleteBtn, editBtn, viewHistoryBtn);
         controls.setPadding(new Insets(10));
@@ -196,7 +196,7 @@ public class BookManagementTab extends VBox {
     }
 
     /**
-     * Chọn file ảnh bìa (Giữ nguyên)
+     * Chọn file ảnh bìa 
      */
     private void handleSelectImage() {
         FileChooser fileChooser = new FileChooser();
