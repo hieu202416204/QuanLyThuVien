@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/LamBaiTap.iml" filepath="$PROJECT_DIR$/LamBaiTap.iml" />
+      <module fileurl="file://$PROJECT_DIR$/QuanLyThuVien.iml" filepath="$PROJECT_DIR$/QuanLyThuVien.iml" />
+      <module fileurl="file://$PROJECT_DIR$/resources/resources.iml" filepath="$PROJECT_DIR$/resources/resources.iml" />
     </modules>
   </component>
 </project>

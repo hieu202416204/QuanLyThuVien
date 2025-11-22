@@ -1,13 +1,16 @@
-public class Book {
+package BackEnd.Book;
+
+import java.time.LocalDate;
+
+public class BookInUserList extends Book {
     private String id;
     private  String name;
     private String author;
     private String year;
-    private String ngayMuon, ngayTra;
-    private boolean status = true;
+    private LocalDate ngayMuon, ngayTra;
     public static final int MAX_DAY = 60;
-    public Book(){}
-    public Book(String id, String name, String author,
+    public BookInUserList(){}
+    public BookInUserList(String id, String name, String author,
                 String year){
         this.id = id;
         this.author = author;
@@ -31,10 +34,6 @@ public class Book {
         this.year = year;
     }
 
-    public void setStatus(boolean status) {
-        this.status = status;
-    }
-
     public String getId() {
         return this.id;
     }
@@ -51,23 +50,19 @@ public class Book {
         return this.year;
     }
 
-    public boolean isStatus() {
-        return this.status;
+    public void setNgayMuon() {
+        this.ngayMuon = LocalDate.now();
     }
 
-    public void setNgayMuon(String ngayMuon) {
-        this.ngayMuon = ngayMuon;
-    }
-
-    public String getNgayMuon() {
+    public LocalDate getNgayMuon() {
         return this.ngayMuon;
     }
 
-    public void setNgayTra(String ngayTra) {
-        this.ngayTra = ngayTra;
+    public void setNgayTra() {
+        this.ngayTra = LocalDate.now();
     }
 
-    public String getNgayTra() {
+    public LocalDate getNgayTra() {
         return this.ngayTra;
     }
     public void inTTin(){

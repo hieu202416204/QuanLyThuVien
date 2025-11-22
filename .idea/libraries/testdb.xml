@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="testdb">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../../xerial-sqlite-jdbc-bd3e0da/src/test/resources/org/sqlite/testdb.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
