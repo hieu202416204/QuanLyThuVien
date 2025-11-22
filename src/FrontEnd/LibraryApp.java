@@ -234,7 +234,7 @@ public class LibraryApp extends Application {
     }
 
     private void toggleTheme(Scene scene, Button button) {
-        // Giữ nguyên logic Dark Mode
+        // logic Dark Mode
         isDarkMode = !isDarkMode;
         if (isDarkMode) {
             scene.getRoot().getStyleClass().add("dark-mode");
@@ -247,7 +247,6 @@ public class LibraryApp extends Application {
 
     // === CÁC PHƯƠNG THỨC TẠO GIAO DIỆN KHÁC ===
     private Pane createUserPane() {
-        // ... (Giữ nguyên logic CRUD vì Library đã được sửa để gọi DAO) ...
         TableColumn<User, String> colId = new TableColumn<>("ID");
         colId.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getId()));
         colId.setPrefWidth(150);
@@ -325,7 +324,7 @@ public class LibraryApp extends Application {
         return pane;
     }
 
-    // === XỬ LÝ TÌM KIẾM THEO ID (Giữ nguyên vì Library đã gọi DAO) ===
+    // === XỬ LÝ TÌM KIẾM THEO ID ===
     private void handleSearchUserById(String userId) {
         if (userId.trim().isEmpty()) {
             showAlert(Alert.AlertType.WARNING, "Cảnh báo", "Vui lòng nhập ID để tìm kiếm.");
@@ -343,7 +342,7 @@ public class LibraryApp extends Application {
         }
     }
 
-    // === XỬ LÝ TÌM KIẾM THEO TÊN (Giữ nguyên vì Library đã gọi DAO) ===
+    // === XỬ LÝ TÌM KIẾM THEO TÊN ===
     private void handleSearchUserByName(String userName) {
         if (userName.trim().isEmpty()) {
             showAlert(Alert.AlertType.WARNING, "Cảnh báo", "Vui lòng nhập Tên để tìm kiếm.");
@@ -406,7 +405,6 @@ public class LibraryApp extends Application {
     }
 
     private Pane createBorrowReturnPane() {
-        // Giữ nguyên logic, vì QuanLyMuonTra đã được sửa để gọi DAO
         TextField userIdField = new TextField(); userIdField.setPromptText("User ID");
         TextField bookIdField = new TextField(); bookIdField.setPromptText("Book ID");
 
@@ -442,8 +440,6 @@ public class LibraryApp extends Application {
         return pane;
     }
 
-    // Trong LibraryApp.java
-
     private Pane createSearchPane() {
 
         // --- KHAI BÁO CÁC THÀNH PHẦN MỚI ---
@@ -469,19 +465,19 @@ public class LibraryApp extends Application {
         Label resultLabel = new Label("Sử dụng các nút bên dưới để tìm kiếm sách.");
         resultLabel.setStyle("-fx-font-style: italic;");
 
-        // Nút mới: Tìm kiếm theo ID (Khớp chính xác)
+        // Tìm kiếm theo ID (Khớp chính xác)
         Button searchByIdBtn = new Button("🔢 Tìm theo ID");
         searchByIdBtn.setOnAction(e -> handleSearch(searchField.getText(), "ID", resultLabel));
 
-        // Nút mới: Tìm kiếm TỔNG HỢP (Tên hoặc Tác giả - LINH HOẠT)
+        // Tìm kiếm TỔNG HỢP (Tên hoặc Tác giả - LINH HOẠT)
         Button searchCombinedBtn = new Button("🔎 Tìm Tên/Tác giả");
         searchCombinedBtn.setOnAction(e -> handleSearch(searchField.getText(), "COMBINED", resultLabel));
 
-        // Nút cũ: Tìm theo tên (LINH HOẠT)
+        // Tìm theo tên (LINH HOẠT)
         Button searchByNameBtn = new Button("📝 Tìm theo Tên");
         searchByNameBtn.setOnAction(e -> handleSearch(searchField.getText(), "NAME", resultLabel));
 
-        // Nút cũ: Tìm theo tác giả (LINH HOẠT)
+        // Tìm theo tác giả (LINH HOẠT)
         Button searchByAuthorBtn = new Button("✍️ Tìm theo Tác giả");
         searchByAuthorBtn.setOnAction(e -> handleSearch(searchField.getText(), "AUTHOR", resultLabel));
 
@@ -495,7 +491,7 @@ public class LibraryApp extends Application {
         HBox controls = new HBox(10, searchField, searchByIdBtn, searchCombinedBtn, searchByNameBtn, searchByAuthorBtn, resetBtn);
         controls.setPadding(new Insets(10));
 
-        // Thay TableView bằng ScrollPane chứa FlowPane
+        // ScrollPane chứa FlowPane
         VBox pane = new VBox(10, resultLabel, controls, galleryScrollPane);
         pane.setPadding(new Insets(10));
 
