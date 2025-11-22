@@ -6,9 +6,9 @@ import BackEnd.LibraryQ.Library;
 import BackEnd.LibraryQ.QuanLyMuonTra;
 import BackEnd.LibraryQ.SearchService;
 import BackEnd.Sattistics.BookStatistic;
-import BackEnd.Sattistics.UserStatistic; // Đã sửa tên import thành UserStatistic chuẩn
+import BackEnd.Sattistics.UserStatistic;
 import BackEnd.User.User;
-import Database.DatabaseManager; // <== THÊM IMPORT QUAN TRỌNG NÀY
+import Database.DatabaseManager;
 import XuLiAnh.ImageResizer;
 import javafx.application.Application;
 import javafx.beans.property.SimpleStringProperty;
@@ -19,6 +19,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
@@ -26,7 +27,9 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -47,7 +50,8 @@ public class LibraryApp extends Application {
     private final TableView<User> userTable = new TableView<>();
     private final FlowPane bookFlowPane = new FlowPane();
     private BookGalleryTab bookGalleryTab;
-
+    private final FlowPane searchGalleryPane = new FlowPane();
+    private final TextField borrowReturnBookIdField = new TextField(); // Field để lưu ID sách đã chọn
     // darkMode=========
     private boolean isDarkMode = false;
 
@@ -438,67 +442,183 @@ public class LibraryApp extends Application {
         return pane;
     }
 
+    // Trong LibraryApp.java
+
     private Pane createSearchPane() {
-        // Giữ nguyên logic, vì SearchService đã gọi DAO
-        TableView<Book> searchResultTable = new TableView<>();
-        ObservableList<Book> searchResultData = FXCollections.observableArrayList();
-        searchResultTable.setItems(searchResultData);
 
-        TableColumn<Book, String> colId = new TableColumn<>("ID");
-        colId.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getId()));
-        colId.setPrefWidth(80);
+        // --- KHAI BÁO CÁC THÀNH PHẦN MỚI ---
 
-        TableColumn<Book, String> colName = new TableColumn<>("Name");
-        colName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
-        colName.setPrefWidth(250);
+        // 1. Dùng FlowPane đã khai báo sẵn trong class để hiển thị Gallery kết quả
+        // private final FlowPane searchGalleryPane = new FlowPane(); // Đã có trong LibraryApp
+        searchGalleryPane.setHgap(15);
+        searchGalleryPane.setVgap(15);
+        searchGalleryPane.setPadding(new Insets(10));
+        searchGalleryPane.setStyle("-fx-alignment: top-left;");
 
-        TableColumn<Book, String> colAuthor = new TableColumn<>("Author");
-        colAuthor.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getAuthor()));
-        colName.setPrefWidth(150);
+        // Dùng ScrollPane để chứa FlowPane
+        ScrollPane galleryScrollPane = new ScrollPane(searchGalleryPane);
+        galleryScrollPane.setFitToWidth(true);
+        galleryScrollPane.setPrefHeight(600);
 
-        TableColumn<Book, String> colStatus = new TableColumn<>("Status");
-        colStatus.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().isStatus() ? "Available" : "Borrowed"));
-        colStatus.setPrefWidth(100);
-
-        searchResultTable.getColumns().addAll(colId, colName, colAuthor, colStatus);
-        searchResultTable.setPrefHeight(500);
+        // --- KHỐI ĐIỀU KHIỂN TÌM KIẾM (Controls) ---
 
         TextField searchField = new TextField();
-        searchField.setPromptText("Nhập Tên hoặc Tác giả");
+        searchField.setPromptText("Nhập ID, Tên, hoặc Tác giả");
+        searchField.setPrefWidth(300);
 
         Label resultLabel = new Label("Sử dụng các nút bên dưới để tìm kiếm sách.");
         resultLabel.setStyle("-fx-font-style: italic;");
 
-        Button searchByNameBtn = new Button("🔍 Tìm theo tên");
-        searchByNameBtn.setOnAction(e -> {
-            List<Book> results = searchService.searchByName(searchField.getText());
-            searchResultData.setAll(results);
-            resultLabel.setText("Đã tìm thấy " + results.size() + " kết quả theo Tên.");
-        });
+        // Nút mới: Tìm kiếm theo ID (Khớp chính xác)
+        Button searchByIdBtn = new Button("🔢 Tìm theo ID");
+        searchByIdBtn.setOnAction(e -> handleSearch(searchField.getText(), "ID", resultLabel));
 
-        Button searchByAuthorBtn = new Button("✍️ Tìm theo tác giả");
-        searchByAuthorBtn.setOnAction(e -> {
-            List<Book> results = searchService.searchByAuthor(searchField.getText());
-            searchResultData.setAll(results);
-            resultLabel.setText("Đã tìm thấy " + results.size() + " kết quả theo Tác giả.");
-        });
+        // Nút mới: Tìm kiếm TỔNG HỢP (Tên hoặc Tác giả - LINH HOẠT)
+        Button searchCombinedBtn = new Button("🔎 Tìm Tên/Tác giả");
+        searchCombinedBtn.setOnAction(e -> handleSearch(searchField.getText(), "COMBINED", resultLabel));
+
+        // Nút cũ: Tìm theo tên (LINH HOẠT)
+        Button searchByNameBtn = new Button("📝 Tìm theo Tên");
+        searchByNameBtn.setOnAction(e -> handleSearch(searchField.getText(), "NAME", resultLabel));
+
+        // Nút cũ: Tìm theo tác giả (LINH HOẠT)
+        Button searchByAuthorBtn = new Button("✍️ Tìm theo Tác giả");
+        searchByAuthorBtn.setOnAction(e -> handleSearch(searchField.getText(), "AUTHOR", resultLabel));
 
         Button resetBtn = new Button("🗑️ Xóa kết quả");
         resetBtn.setOnAction(e -> {
-            searchResultData.clear();
+            searchGalleryPane.getChildren().clear();
             searchField.clear();
             resultLabel.setText("Sẵn sàng cho tìm kiếm mới.");
         });
 
-        HBox controls = new HBox(10, searchField, searchByNameBtn, searchByAuthorBtn, resetBtn);
+        HBox controls = new HBox(10, searchField, searchByIdBtn, searchCombinedBtn, searchByNameBtn, searchByAuthorBtn, resetBtn);
         controls.setPadding(new Insets(10));
 
-        VBox pane = new VBox(10, resultLabel, controls, searchResultTable);
+        // Thay TableView bằng ScrollPane chứa FlowPane
+        VBox pane = new VBox(10, resultLabel, controls, galleryScrollPane);
         pane.setPadding(new Insets(10));
 
         return pane;
     }
+    /**
+     * Xử lý logic tìm kiếm sách và cập nhật FlowPane kết quả.
+     */
+    private void handleSearch(String query, String searchType, Label resultLabel) {
+        if (query.trim().isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "Cảnh báo", "Vui lòng nhập từ khóa tìm kiếm.");
+            return;
+        }
 
+        List<Book> results = switch (searchType) {
+            // ID: Khớp chính xác (Dùng getBookById vì BookDAO chỉ hỗ trợ tìm kiếm exact ID)
+            case "ID" -> {
+                Book found = library.getBookDAO().getBookById(query.trim());
+                yield found != null ? List.of(found) : List.of();
+            }
+            // COMBINED: Tên hoặc Tác giả (Linh hoạt/Partial)
+            case "COMBINED" -> searchService.searchCombined(query);
+            // NAME: Tên (Linh hoạt/Partial)
+            case "NAME" -> searchService.searchByName(query);
+            // AUTHOR: Tác giả (Linh hoạt/Partial)
+            case "AUTHOR" -> searchService.searchByAuthor(query);
+            default -> List.of();
+        };
+
+        // 1. Cập nhật Gallery
+        updateSearchGallery(results);
+
+        // 2. Cập nhật Label thông báo
+        String typeText = switch (searchType) {
+            case "ID" -> "ID";
+            case "COMBINED" -> "Tên hoặc Tác giả";
+            case "NAME" -> "Tên";
+            case "AUTHOR" -> "Tác giả";
+            default -> "";
+        };
+
+        resultLabel.setText("Đã tìm thấy " + results.size() + " kết quả theo " + typeText + ".");
+
+        if (results.isEmpty()) {
+            showAlert(Alert.AlertType.INFORMATION, "Thông báo", "Không tìm thấy sách nào phù hợp.");
+        }
+    }
+    /**
+     * Cập nhật FlowPane kết quả tìm kiếm (searchGalleryPane) với các thẻ sách.
+     */
+    private void updateSearchGallery(List<Book> books) {
+        searchGalleryPane.getChildren().clear();
+
+        // Xác định URL ảnh mặc định an toàn
+        URL defaultUrl = getClass().getResource("/resources/default_cover.png");
+        if (defaultUrl == null) {
+            defaultUrl = getClass().getResource("/default_cover.png");
+        }
+        final String DEFAULT_IMAGE_URL = (defaultUrl != null) ? defaultUrl.toExternalForm() : bookGalleryTab.getPlaceholderBase64Url(); // Giả định có getter
+
+        for (Book book : books) {
+            // Tái sử dụng logic tạo VBox (Thẻ sách) từ BookGalleryTab
+            VBox bookBox = new VBox(5);
+            bookBox.setPrefWidth(150);
+            bookBox.getStyleClass().add("gallery-book-box");
+            bookBox.setPadding(new Insets(10)); // Thêm padding để nhìn đẹp hơn
+
+            // --- 1. LOGIC TẢI ẢNH BÌA VÀ RESIZE ---
+            Image image;
+            String path = book.getImagePath();
+            final int TARGET_WIDTH = 120;
+            final int TARGET_HEIGHT = 160;
+
+            try {
+                if (path != null && !path.isEmpty()) {
+                    File imageFile = new File(path);
+                    if (imageFile.exists()) {
+                        BufferedImage originalAWTImage = ImageIO.read(imageFile);
+                        // Gọi hàm resize chung của LibraryApp
+                        image = convertAndResize(originalAWTImage);
+                        if (image == null) throw new IOException("Resize thất bại hoặc file rỗng.");
+                    } else {
+                        throw new IOException("File ảnh không tồn tại: " + path);
+                    }
+                } else {
+                    image = new Image(DEFAULT_IMAGE_URL, TARGET_WIDTH, TARGET_HEIGHT, true, true);
+                }
+            } catch (Exception e) {
+                System.err.println("Lỗi tải/resize ảnh cho sách " + book.getId() + ": " + e.getMessage());
+                image = new Image(DEFAULT_IMAGE_URL, TARGET_WIDTH, TARGET_HEIGHT, true, true);
+            }
+
+            ImageView imageView = new ImageView(image);
+            imageView.setFitWidth(TARGET_WIDTH);
+            imageView.setFitHeight(TARGET_HEIGHT);
+            imageView.setPreserveRatio(true);
+
+            // --- 2. THÔNG TIN SÁCH (LABELS) ---
+            Label idLabel = new Label("ID: " + book.getId());
+
+            Label nameLabel = new Label(book.getName());
+            nameLabel.setWrapText(true);
+            nameLabel.setMaxWidth(140);
+            nameLabel.getStyleClass().add("book-name-label");
+
+            Label authorLabel = new Label("Tác giả: " + book.getAuthor());
+            authorLabel.getStyleClass().add("book-author-label");
+
+            // 3. Trạng thái sách
+            Label statusLabel = new Label(book.isStatus() ? "CÓ SẴN" : "ĐÃ MƯỢN");
+            statusLabel.getStyleClass().add(book.isStatus() ? "available-status" : "borrowed-status");
+
+            bookBox.getChildren().addAll(
+                    imageView,
+                    new Separator(),
+                    idLabel,
+                    nameLabel,
+                    authorLabel,
+                    statusLabel
+            );
+            searchGalleryPane.getChildren().add(bookBox);
+        }
+    }
     // === TẠO GIAO DIỆN LỊCH SỬ CHUNG (SỬ DỤNG TRANSACTION DAO) ===
     private Pane createHistoryPane() {
         TextArea historyArea = new TextArea();

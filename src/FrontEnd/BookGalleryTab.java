@@ -51,6 +51,10 @@ public class BookGalleryTab extends ScrollPane {
 
         updateBookGallery();
     }
+    // Thêm vào BookGalleryTab.java
+    public String getPlaceholderBase64Url() {
+        return PLACEHOLDER_URL;
+    }
 
     public void updateBookGallery() {
         bookFlowPane.getChildren().clear();
@@ -103,6 +107,7 @@ public class BookGalleryTab extends ScrollPane {
 
             // --- 2. THÔNG TIN SÁCH (LABELS) ---
             Label idLabel = new Label("ID: " + book.getId());
+            idLabel.getStyleClass().add("id-label");
 
             Label nameLabel = new Label(book.getName());
             nameLabel.setWrapText(true);
@@ -113,6 +118,7 @@ public class BookGalleryTab extends ScrollPane {
             authorLabel.getStyleClass().add("book-author-label");
 
             Label yearLabel = new Label("Năm: " + book.getYear());
+            yearLabel.getStyleClass().add("year-label");
 
             // 3. Trạng thái sách
             Label statusLabel = new Label(book.isStatus() ? "CÓ SẴN" : "ĐÃ MƯỢN");
