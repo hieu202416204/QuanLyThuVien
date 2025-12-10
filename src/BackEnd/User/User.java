@@ -7,8 +7,6 @@ public class User {
     private String name;
     private int soSachDaMuon = 0; // Số lượt mượn tổng cộng (được đọc/ghi từ DB)
 
-    // Đã loại bỏ: private List<UserInUserHistory> userHistoryList
-    // Đã loại bỏ: private ArrayList<BookInUserList> danhSachMuon
 
     public User(){}
 
@@ -61,16 +59,6 @@ public class User {
         return this.soSachDaMuon;
     }
 
-    // =======================================================
-    // CÁC PHƯƠNG THỨC ĐÃ LOẠI BỎ (Thay thế bằng DAO)
-    // =======================================================
 
-    // [LOẠI BỎ] public void setDanhSachMuon(Book book) { ... }
-    // [LOẠI BỎ] public BookInUserList traSach(String BookId){ ... }
-    // [LOẠI BỎ] public ArrayList<BookInUserList> getDanhSachMuon() { ... }
-    // [LOẠI BỎ] public void setListHistoryOfUser(...) { ... }
-    // [LOẠI BỎ] public List<UserInUserHistory> getListHistoryOfUser() { ... }
-    //            -> Logic này được thay thế bằng TransactionDAO.getUserHistory(userId)
-
-    // [LOẠI BỎ] public void inTTin(){ ... } (Phụ thuộc vào danhSachMuon)
+    // =======================================================
 }

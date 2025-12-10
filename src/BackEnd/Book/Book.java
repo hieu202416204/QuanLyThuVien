@@ -18,7 +18,6 @@ public class Book {
         this.author = author;
         this.name = name;
         this.year =  year;
-        //this.imagePath = ""; // mặc định chưa có ảnh
     }
     // getter vaf setter cho imagePath
 

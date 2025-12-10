@@ -56,4 +56,30 @@ public class DatabaseManager {
             e.printStackTrace();
         }
     }
+    /**
+     * Xóa toàn bộ dữ liệu và khởi tạo lại cấu trúc bảng (Factory Reset)
+     */
+    public static void resetDatabase() {
+        String dropTrans = "DROP TABLE IF EXISTS transactions";
+        String dropBooks = "DROP TABLE IF EXISTS books";
+        String dropUsers = "DROP TABLE IF EXISTS users";
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement()) {
+
+            // 1. Xóa bảng theo thứ tự (Transaction xóa trước vì có khóa ngoại)
+            stmt.execute(dropTrans);
+            stmt.execute(dropBooks);
+            stmt.execute(dropUsers);
+
+            System.out.println("All tables dropped.");
+
+            // 2. Gọi lại hàm khởi tạo để tạo bảng mới trắng tinh
+            initializeDatabase();
+
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi reset DB: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }

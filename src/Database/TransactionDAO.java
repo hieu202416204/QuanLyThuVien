@@ -279,4 +279,28 @@ public class TransactionDAO {
 
         return false;
     }
+    /**
+     * Lấy ngày mượn của một giao dịch đang hoạt động (chưa trả).
+     * @return Chuỗi ngày mượn (yyyy-MM-dd HH:mm:ss) hoặc null nếu không tìm thấy.
+     */
+    public String getBorrowDateOfActiveTransaction(String userId, String bookId) {
+        String sql = "SELECT borrow_date FROM transactions "
+                + "WHERE user_id = ? AND book_id = ? AND status = 'BORROWED'";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userId);
+            pstmt.setString(2, bookId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("borrow_date");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi lấy ngày mượn: " + e.getMessage());
+        }
+        return null;
+    }
 }

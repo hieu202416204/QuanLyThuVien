@@ -21,7 +21,6 @@ public class SearchService {
     }
 
     // --- 2. TÌM KIẾM THEO TÁC GIẢ (Linh hoạt: chứa chuỗi) ---
-    // (BookDAO không có partial cho Author, nên tạm dùng Exact hoặc tạo mới trong DAO)
     // Giả sử ta muốn dùng searchCombined để tìm theo tên/tác giả chung:
     public List<Book> searchByAuthor(String author) {
         // Nếu muốn tìm kiếm linh hoạt:

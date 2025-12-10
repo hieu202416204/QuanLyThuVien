@@ -1,0 +1,412 @@
+/* styles.css */
+
+/* --- GLOBAL & BASE --- */
+.root {
+    -fx-background-color: #f7f9fc; /* Nền trắng mềm (Light Mode) */
+    -fx-font-family: "Arial", sans-serif;
+}
+
+/* Định kiểu chung cho TextField và Label */
+.label {
+    -fx-text-fill: #333333;
+}
+.text-field {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-padding: 8px;
+    -fx-font-size: 14px;
+    -fx-effect: null;
+    -fx-transition: -fx-border-color 0.2s ease, -fx-background-color 0.2s ease;
+}
+.text-field:focused {
+    -fx-border-color: #007bff; /* Xanh dương hiện đại khi focus */
+    -fx-border-width: 2px;
+}
+.hbox {
+    -fx-spacing: 10;
+}
+
+/* --- 1. TabPane Styling (Sạch sẽ & Nổi bật) --- */
+.tab-pane {
+    -fx-tab-min-width: 140px;
+    -fx-base: #f7f9fc;
+}
+.tab {
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-background-color: transparent;
+    -fx-padding: 12px 15px;
+}
+.tab:selected {
+    -fx-background-color: white;
+    -fx-border-color: #007bff;
+    -fx-border-width: 0 0 3px 0;
+}
+.tab:selected .tab-label {
+    -fx-text-fill: #007bff;
+}
+.tab .tab-label {
+    -fx-text-fill: #6c757d;
+}
+
+/* --- 2. Button Styling (Sắc nét & Chuyển động) --- */
+.button {
+    -fx-background-color: #007bff;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-padding: 10px 18px;
+    -fx-border-radius: 20px; /* Bo góc tròn */
+    -fx-background-radius: 20px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 5, 0, 0, 2);
+    -fx-transition: all 0.2s ease-in-out;
+}
+.button:hover {
+    -fx-background-color: #0056b3;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 8, 0, 0, 3);
+}
+.button:pressed {
+    -fx-background-color: #004085;
+    -fx-translate-y: 1px;
+    -fx-effect: none;
+}
+
+/* Định kiểu Nút đặc biệt */
+.button-delete {
+    -fx-background-color: #dc3545;
+}
+.button-delete:hover {
+    -fx-background-color: #c82333;
+}
+.button-edit {
+    -fx-background-color: #ffc107;
+    -fx-text-fill: #333333;
+}
+.button-edit:hover {
+    -fx-background-color: #e0a800;
+}
+.button-history {
+    -fx-background-color: #6c757d;
+}
+.button-history:hover {
+    -fx-background-color: #5a6268;
+}
+
+/* --- 3. TableView Styling --- */
+.table-view {
+    -fx-base: #f7f9fc;
+    -fx-control-inner-background: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-font-size: 13px;
+    -fx-border-radius: 4px;
+}
+.table-view .column-header {
+    -fx-background-color: #e9ecef;
+}
+.table-view .column-header-background .label {
+    -fx-text-fill: #495057;
+    -fx-font-weight: 600;
+}
+.table-row-cell:selected {
+    -fx-background-color: #cce5ff;
+}
+.topUser {
+    -fx-font-size: 1.5em;
+    -fx-font-weight: bold;
+}
+
+/* --- 4. Gallery Styling (Thẻ Nổi & Tương tác) --- */
+.gallery-book-box {
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1px;
+    -fx-padding: 15px 10px;
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10, 0, 0, 5);
+    -fx-alignment: center;
+    -fx-cursor: hand;
+    -fx-border-radius: 8px;
+    -fx-transition: all 0.3s ease-in-out;
+}
+.gallery-book-box:hover {
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 15, 0, 0, 8);
+}
+.book-name-label {
+    -fx-font-weight: 700;
+    -fx-font-size: 1.2em;
+    -fx-text-fill: #343a40;
+}
+
+.book-author-label {
+    -fx-font-style: italic;
+    -fx-text-fill: #6c757d;
+}
+
+/* Trạng thái */
+.available-status {
+    -fx-text-fill: #28a745;
+    -fx-font-weight: bold;
+}
+.borrowed-status {
+    -fx-text-fill: #fd7e14;
+    -fx-font-weight: bold;
+}
+
+
+/* =========================================================
+   --- DARK MODE DEFINITION (.dark-mode) ---
+   ========================================================= */
+
+.dark-mode {
+    -fx-background-color: #2c3e50; /* Nền chung tối */
+}
+
+/* Nền Tab Pane */
+.dark-mode .tab-pane {
+    -fx-base: #2c3e50;
+}
+.dark-mode .tab {
+    -fx-background-color: #34495e;
+}
+.dark-mode .tab:selected {
+    -fx-background-color: #2c3e50;
+    -fx-border-color: #99ccff; /* Màu xanh sáng khi chọn */
+}
+.dark-mode .tab:selected .tab-label {
+    -fx-text-fill: #99ccff;
+}
+.dark-mode .tab .tab-label {
+    -fx-text-fill: #bdc3c7;
+}
+.dark-mode .topUser {
+    -fx-text-fill: white;
+}
+.dark-mode .topBook {
+    -fx-text-fill: white;
+}
+/* Nền TextField */
+.dark-mode .text-field {
+    -fx-background-color: #34495e;
+    -fx-border-color: #555555;
+    -fx-text-fill: #ecf0f1;
+}
+
+/* Nền TableView */
+.dark-mode .table-view {
+    -fx-base: #2c3e50;
+    -fx-control-inner-background: #34495e;
+    -fx-border-color: #555555;
+}
+.dark-mode .table-view .column-header {
+    -fx-background-color: #4a637a;
+}
+.dark-mode .table-view .label {
+    -fx-text-fill: #ecf0f1;
+}
+.dark-mode .table-row-cell:selected {
+    -fx-background-color: #4c7c8c;
+}
+.dark-mode .table-row-cell:filled:hover {
+    -fx-background-color: #445b70; /* Hiệu ứng hover tối */
+}
+
+/* Nền Gallery Cards */
+.dark-mode .gallery-book-box {
+    -fx-background-color: #34495e;
+    -fx-border-color: #555555;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 5);
+}
+.dark-mode .id-label {
+    -fx-text-fill: white;
+}
+.dark-mode .year-label {
+    -fx-text-fill: white;
+}
+.dark-mode .book-name-label {
+    -fx-text-fill: #99ccff;
+}
+.dark-mode .book-author-label {
+    -fx-text-fill: #bdc3c7;
+}
+.dark-mode .available-status {
+    -fx-text-fill: #2ecc71; /* Green sáng hơn */
+}
+.dark-mode .borrowed-status {
+    -fx-text-fill: #f39c12; /* Cam sáng hơn */
+}
+/* --- 5. Dashboard Cards (Home Tab) --- */
+.dashboard-card {
+    -fx-background-color: white;
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 10, 0, 0, 5);
+    -fx-padding: 20px;
+    -fx-alignment: center-left;
+    -fx-min-width: 200px;
+}
+.card-title {
+    -fx-font-size: 14px;
+    -fx-text-fill: #6c757d;
+    -fx-font-weight: bold;
+}
+.card-number {
+    -fx-font-size: 32px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #2c3e50; /* Màu mặc định */
+}
+/* Màu riêng cho từng loại thẻ */
+.card-blue .card-number { -fx-text-fill: #007bff; }
+.card-green .card-number { -fx-text-fill: #28a745; }
+.card-orange .card-number { -fx-text-fill: #fd7e14; }
+.card-red .card-number { -fx-text-fill: #dc3545; }
+
+/* Dark mode cho Dashboard */
+.dark-mode .dashboard-card {
+    -fx-background-color: #34495e;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 10, 0, 0, 5);
+}
+.dark-mode .card-title { -fx-text-fill: white; }
+.dark-mode .card-number { -fx-text-fill: #ecf0f1; }
+/* =========================================================
+   --- TYPOGRAPHY & TITLES (PHÔNG CHỮ & TIÊU ĐỀ) ---
+   ========================================================= */
+
+/* 1. Cấu hình chung cho toàn bộ Label (Nội dung cơ bản) */
+.label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #333333; /* Màu xám đen dễ đọc */
+    -fx-font-family: "Segoe UI", "Arial", sans-serif; /* Font hiện đại hơn */
+}
+
+/* 2. Class dành riêng cho TIÊU ĐỀ LỚN (Page Title)
+   Dùng cho: Tên các mục chính, Tiêu đề thống kê */
+.page-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 800; /* Extra Bold */
+    -fx-text-fill: #2c3e50; /* Xanh đen đậm */
+    -fx-padding: 0 0 10 0; /* Cách dưới 10px */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 3, 0, 0, 1); /* Bóng nhẹ */
+}
+
+/* 3. Class dành cho TIÊU ĐỀ PHỤ (Section Title)
+   Dùng cho: Các tiêu đề nhỏ hơn trong form, group */
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #007bff; /* Xanh dương chủ đạo */
+    -fx-padding: 5 0 5 0;
+}
+
+/* 4. Định dạng Tiêu đề của BIỂU ĐỒ (Charts) */
+.chart-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #555555;
+}
+
+/* 5. Định dạng Text trong Bảng (TableView) */
+.table-cell {
+    -fx-font-size: 13px;
+    -fx-alignment: center-left;
+}
+.table-cell .text {
+    -fx-fill: #333333;
+}
+
+
+/* =========================================================
+   --- DARK MODE TEXT OVERRIDES (MÀU CHỮ CHẾ ĐỘ TỐI) ---
+   ========================================================= */
+
+.dark-mode .label {
+    -fx-text-fill: #ecf0f1; /* Trắng xám */
+}
+
+.dark-mode .page-title {
+    -fx-text-fill: #ffffff; /* Trắng tinh */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 5, 0, 0, 2);
+}
+
+.dark-mode .section-title {
+    -fx-text-fill: #5dade2; /* Xanh dương sáng */
+}
+
+.dark-mode .chart-title {
+    -fx-text-fill: #bdc3c7;
+}
+
+.dark-mode .table-cell .text {
+    -fx-fill: #ecf0f1;
+}
+
+.dark-mode .card-number {
+    -fx-text-fill: #ecf0f1;
+}
+/* =========================================================
+   --- SCROLLABLE NAVIGATION BAR (THANH MENU TRƯỢT) ---
+   ========================================================= */
+
+/* 1. Ẩn Header mặc định của TabPane gốc */
+.hidden-header-tab-pane .tab-header-area {
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+    -fx-opacity: 0;
+    -fx-padding: 0;
+}
+
+/* 2. Style cho thanh trượt ngang (ScrollPane) */
+.nav-scroll-pane {
+    -fx-background-color: transparent; /* Trong suốt */
+    -fx-fit-to-height: true;
+    -fx-padding: 5 0 10 0; /* Khoảng cách trên dưới */
+}
+/* Ẩn thanh cuộn (scrollbar) để nhìn cho sạch sẽ */
+.nav-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+.nav-scroll-pane .scroll-bar:horizontal ,
+.nav-scroll-pane .scroll-bar:vertical{
+    -fx-opacity: 0;
+    -fx-padding: 0;
+}
+
+/* 3. Style cho các Nút Tab (ToggleButton) */
+.nav-tab-button {
+    -fx-background-color: white;
+    -fx-text-fill: #6c757d;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-border-color: #e0e0e0;
+    -fx-cursor: hand;
+    -fx-padding: 8px 15px;
+    -fx-transition: all 0.2s;
+}
+
+.nav-tab-button:hover {
+    -fx-background-color: #f1f3f5;
+    -fx-text-fill: #007bff;
+}
+
+/* Trạng thái khi được chọn (Active) */
+.nav-tab-button:selected {
+    -fx-background-color: #007bff;
+    -fx-text-fill: white;
+    -fx-border-color: #007bff;
+    -fx-effect: dropshadow(gaussian, rgba(0, 123, 255, 0.4), 8, 0, 0, 2);
+}
+
+.dark-mode .nav-tab-button {
+    -fx-background-color: #34495e;
+    -fx-text-fill: #bdc3c7;
+    -fx-border-color: #555;
+}
+.dark-mode .nav-tab-button:selected {
+    -fx-background-color: #5dade2;
+    -fx-text-fill: white;
+    -fx-border-color: #5dade2;
+}
