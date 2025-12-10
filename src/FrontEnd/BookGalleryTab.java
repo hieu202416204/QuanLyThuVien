@@ -137,23 +137,36 @@ public class BookGalleryTab extends ScrollPane {
     }
 
     /**
-     * Logic tải và resize ảnh (Tách ra để code gọn hơn)
+     * Logic tải và resize ảnh (CÓ SỬ DỤNG CACHE)
      */
     private Image loadImageForBook(Book book, String defaultUrl) {
-        String fileName = book.getImagePath(); // Bây giờ nó là "img_123.jpg"
+        String fileName = book.getImagePath();
 
+        // 1. KIỂM TRA CACHE TRƯỚC (Siêu nhanh)
+        // Nếu tên file này đã từng được load, lấy ngay lập tức
+        if (fileName != null && BackEnd.Utils.ImageCache.contains(fileName)) {
+            return BackEnd.Utils.ImageCache.get(fileName);
+        }
+
+        // 2. NẾU CHƯA CÓ TRONG CACHE THÌ MỚI ĐỌC FILE (Chậm)
         try {
-            // Dùng FileUtil để lấy file từ thư mục 'images' trong dự án
             File localFile = BackEnd.Utils.FileUtil.getLocalFile(fileName);
 
             if (localFile != null && localFile.exists()) {
                 BufferedImage originalAWTImage = ImageIO.read(localFile);
                 Image resized = resizeConverter.apply(originalAWTImage);
-                if (resized != null) return resized;
+
+                if (resized != null) {
+                    // 3. ĐỌC XONG THÌ LƯU VÀO CACHE NGAY
+                    BackEnd.Utils.ImageCache.put(fileName, resized);
+                    return resized;
+                }
             }
         } catch (Exception e) {
-            // Không in lỗi quá nhiều
+            // Lỗi đọc file thì bỏ qua
         }
+
+        // Trả về ảnh mặc định (Không cần cache ảnh mặc định vì nó nhẹ và load từ Resource)
         return new Image(defaultUrl, TARGET_WIDTH, TARGET_HEIGHT, true, true);
     }
 

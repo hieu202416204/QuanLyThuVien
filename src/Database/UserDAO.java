@@ -17,8 +17,15 @@ public class UserDAO {
         User user = new User();
         user.setId(rs.getString("id"));
         user.setName(rs.getString("name"));
+        user.setEmail(rs.getString("email"));
+        user.setAvatarPath(rs.getString("avatarPath"));
         // Sử dụng setter đặc biệt để đọc số sách đã mượn từ DB
         user.setSoSachDaMuonFromDB(rs.getInt("soSachDaMuon"));
+        // Đọc ngày tạo
+        String dateStr = rs.getString("created_at");
+        if (dateStr != null) {
+            user.setCreatedAt(java.time.LocalDate.parse(dateStr));
+        }
         return user;
     }
 
@@ -31,12 +38,16 @@ public class UserDAO {
      */
     public boolean addUser(User user) {
         // soSachDaMuon mặc định là 0 khi thêm mới
-        String sql = "INSERT INTO users (id, name, soSachDaMuon) VALUES (?, ?, 0)";
+        String sql = "INSERT INTO users (id, name, email, avatarPath,created_at, soSachDaMuon) VALUES (?, ?, ?, ?, ?, 0)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, user.getId());
             pstmt.setString(2, user.getName());
+            pstmt.setString(3, user.getEmail());
+            pstmt.setString(4, user.getAvatarPath());
+            pstmt.setString(5, user.getCreatedAt().toString());
+
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Lỗi khi thêm người dùng: " + e.getMessage());
@@ -170,5 +181,23 @@ public class UserDAO {
             System.err.println("Lỗi khi lấy người dùng theo số sách đã mượn: " + e.getMessage());
         }
         return userList;
+    }
+    // --- Thống kê số lượng user đăng ký theo tháng (cho biểu đồ) ---
+    public java.util.Map<String, Integer> getUserGrowthStats() {
+        java.util.Map<String, Integer> stats = new java.util.LinkedHashMap<>();
+        // Query gom nhóm theo tháng (substr(created_at, 1, 7) lấy yyyy-MM)
+        String sql = "SELECT substr(created_at, 1, 7) as month, COUNT(*) as count FROM users GROUP BY month ORDER BY month";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while(rs.next()) {
+                stats.put(rs.getString("month"), rs.getInt("count"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return stats;
     }
 }

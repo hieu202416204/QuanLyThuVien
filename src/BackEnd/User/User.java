@@ -2,17 +2,37 @@ package BackEnd.User;
 
 // Loại bỏ các import không cần thiết sau khi loại bỏ các List/ArrayList
 
+import java.time.LocalDate;
+
 public class User {
     private String id;
     private String name;
     private int soSachDaMuon = 0; // Số lượt mượn tổng cộng (được đọc/ghi từ DB)
+    private String email;
+    private String avatarPath;
+    private LocalDate creatAt;
 
-
-    public User(){}
-
+    public User(){
+        this.creatAt = LocalDate.now();
+    }
     public User(String id, String name){
         this.id = id;
         this.name = name;
+        this.creatAt = LocalDate.now();
+    }
+
+    public User(String id, String name, String email){
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.creatAt = LocalDate.now();
+    }
+    public User(String id, String name, String email, String avatarPath){
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.avatarPath = avatarPath;
+        this.creatAt = LocalDate.now();
     }
 
     // =======================================================
@@ -35,6 +55,23 @@ public class User {
         return name;
     }
 
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getEmail() {
+        return this.email;
+    }
+
+    public void setAvatarPath(String avatarPath) {
+        this.avatarPath = avatarPath;
+    }
+
+    public String getAvatarPath() {
+        return this.avatarPath;
+    }
+    public LocalDate getCreatedAt() { return creatAt;}
+    public void setCreatedAt(LocalDate createdAt) { this.creatAt = createdAt; }
     // =======================================================
     // THỐNG KÊ / HỖ TRỢ DB
     // =======================================================

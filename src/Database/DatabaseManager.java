@@ -32,6 +32,9 @@ public class DatabaseManager {
             String sqlUsers = "CREATE TABLE IF NOT EXISTS users ("
                     + "id TEXT PRIMARY KEY,"
                     + "name TEXT NOT NULL,"
+                    + "email TEXT,"
+                    + "avatarPath TEXT,"
+                    + "created_at TEXT,"
                     + "soSachDaMuon INTEGER DEFAULT 0"
                     + ");";
             stmt.execute(sqlUsers);
@@ -48,6 +51,12 @@ public class DatabaseManager {
                     + "FOREIGN KEY(book_id) REFERENCES books(id)"
                     + ");";
             stmt.execute(sqlTransactions);
+            // 4. TẠO BẢNG SETTINGS (Lưu cấu hình hệ thống)
+            String sqlSettings = "CREATE TABLE IF NOT EXISTS settings ("
+                    + "key_name TEXT PRIMARY KEY,"
+                    + "value TEXT"
+                    + ");";
+            stmt.execute(sqlSettings);
 
             System.out.println("Database initialized successfully.");
 

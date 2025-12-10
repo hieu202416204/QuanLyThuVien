@@ -6,13 +6,50 @@ import BackEnd.Book.Book;
 import BackEnd.User.User;
 
 public class QuanLyMuonTra {
-    private static final int MAX_DAYS_ALLOWED = 60; // Số ngày tối đa được mượn
-    private static final long FINE_PER_DAY = 20000;  // Phạt 20000đ mỗi ngày quá hạn
 
     private final Library library; // Vẫn cần Library để lấy các DAO
 
     public QuanLyMuonTra(Library library) {
         this.library = library;
+    }
+    /**
+     * Kiểm tra và tính tiền phạt (Đọc cấu hình động từ DB).
+     */
+    public long calculateFine(String userId, String bookId) {
+        // 1. Lấy cấu hình từ DB (Nếu chưa cài đặt thì dùng mặc định: 60 ngày, 2000đ)
+        String daysStr = library.getSettingsDAO().getSetting("max_borrow_days");
+        String fineStr = library.getSettingsDAO().getSetting("fine_per_day");
+
+        int maxDays = daysStr.isEmpty() ? 60 : Integer.parseInt(daysStr);
+        long finePerDay = fineStr.isEmpty() ? 2000 : Long.parseLong(fineStr);
+
+        // 2. Lấy ngày mượn từ DB
+        String borrowDateStr = library.getTransactionDAO().getBorrowDateOfActiveTransaction(userId, bookId);
+        if (borrowDateStr == null) return 0;
+
+        try {
+            // 3. Tính toán ngày (Giữ nguyên logic cũ)
+            java.time.LocalDateTime borrowTime;
+            if (borrowDateStr.contains(" ")) {
+                borrowTime = java.time.LocalDateTime.parse(borrowDateStr, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } else {
+                borrowTime = java.time.LocalDate.parse(borrowDateStr).atStartOfDay();
+            }
+
+            java.time.LocalDateTime returnTime = java.time.LocalDateTime.now();
+            long daysBorrowed = java.time.temporal.ChronoUnit.DAYS.between(borrowTime, returnTime);
+
+            // 4. Tính phạt theo cấu hình mới
+            if (daysBorrowed > maxDays) {
+                long overdueDays = daysBorrowed - maxDays;
+                return overdueDays * finePerDay;
+            }
+
+        } catch (Exception e) {
+            System.err.println("Lỗi tính phạt: " + e.getMessage());
+        }
+
+        return 0; // Không phạt
     }
 
     public String choMuonSach(String userId, String bookId) {
@@ -71,41 +108,5 @@ public class QuanLyMuonTra {
             return "Trả sách thành công: " + book.getName();
         }
         return "Lỗi: Không tìm thấy sách/người dùng hoặc sách chưa được mượn.";
-    }
-    /**
-     * Kiểm tra và tính tiền phạt (nếu có).
-     * @return Số tiền phạt (VNĐ). Trả về 0 nếu không quá hạn hoặc lỗi.
-     */
-    public long calculateFine(String userId, String bookId) {
-        // 1. Lấy ngày mượn từ DB
-        String borrowDateStr = library.getTransactionDAO().getBorrowDateOfActiveTransaction(userId, bookId);
-
-        if (borrowDateStr == null) return 0; // Không tìm thấy giao dịch
-
-        try {
-            // 2. Chuyển đổi chuỗi ngày thành LocalDateTime
-            // Lưu ý: TransactionDAO dùng format "yyyy-MM-dd HH:mm:ss" hoặc "yyyy-MM-dd"
-            java.time.LocalDateTime borrowTime;
-            if (borrowDateStr.contains(" ")) {
-                borrowTime = java.time.LocalDateTime.parse(borrowDateStr, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            } else {
-                borrowTime = java.time.LocalDate.parse(borrowDateStr).atStartOfDay();
-            }
-
-            // 3. Tính khoảng cách ngày
-            java.time.LocalDateTime returnTime = java.time.LocalDateTime.now();
-            long daysBorrowed = java.time.temporal.ChronoUnit.DAYS.between(borrowTime, returnTime);
-
-            // 4. Tính phạt
-            if (daysBorrowed > MAX_DAYS_ALLOWED) {
-                long overdueDays = daysBorrowed - MAX_DAYS_ALLOWED;
-                return overdueDays * FINE_PER_DAY;
-            }
-
-        } catch (Exception e) {
-            System.err.println("Lỗi tính phạt: " + e.getMessage());
-        }
-
-        return 0; // Không phạt
     }
 }

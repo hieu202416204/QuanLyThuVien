@@ -3,6 +3,7 @@ package BackEnd.LibraryQ;
 import BackEnd.Book.Book;
 import BackEnd.User.User;
 import Database.BookDAO;
+import Database.SettingsDAO;
 import Database.TransactionDAO;
 import Database.UserDAO;
 
@@ -14,12 +15,14 @@ public class Library {
     private final BookDAO bookDAO;
     private final UserDAO userDAO;
     private final TransactionDAO transactionDAO;
+    private final SettingsDAO settingsDAO; // cho biet so luong ngay qua han duoc phep, so tien phai tra tu database
 
     // Constructor: Khởi tạo các DAO
     public Library() {
         this.bookDAO = new BookDAO();
         this.userDAO = new UserDAO();
         this.transactionDAO = new TransactionDAO();
+        this.settingsDAO = new SettingsDAO();
     }
 
     // ----------------------------------------------------------------------
@@ -31,12 +34,14 @@ public class Library {
     }
 
     public boolean deleteBook(String id) {
-        // Logic nghiệp vụ phức tạp (kiểm tra sách đang mượn) nên được đặt ở QuanLyMuonTra.
         return bookDAO.deleteBook(id);
     }
 
     public List<Book> getBooks() {
         return bookDAO.getAllBooks();
+    }
+    public SettingsDAO getSettingsDAO() {
+        return settingsDAO;
     }
 
     public Book findBookById(String bookId) {

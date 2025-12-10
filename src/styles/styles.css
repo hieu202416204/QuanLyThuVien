@@ -410,3 +410,126 @@
     -fx-text-fill: white;
     -fx-border-color: #5dade2;
 }
+/* =========================================================
+   --- SMART INVENTORY SECTION (PHẦN KIỂM KÊ) ---
+   ========================================================= */
+
+/* 1. Khung chứa chính (Container) */
+.inventory-container {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);
+    -fx-padding: 15;
+}
+
+/* 2. Tiêu đề lớn */
+.inventory-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50; /* Màu tối cho nền trắng */
+}
+
+/* 3. Số liệu hệ thống */
+.inventory-system-text {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2980b9; /* Màu xanh dương */
+}
+
+/* 4. Nút Phân tích */
+.button-analyze {
+    -fx-background-color: #8e44ad; /* Màu tím */
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.button-analyze:hover {
+    -fx-background-color: #732d91;
+}
+
+/* ---------------------------------------------------------
+   --- DARK MODE OVERRIDES (GIAO DIỆN TỐI) ---
+   --------------------------------------------------------- */
+
+.dark-mode .inventory-container {
+    -fx-background-color: #34495e; /* Nền xám xanh tối */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 5);
+}
+
+.dark-mode .inventory-title {
+    -fx-text-fill: #ecf0f1; /* Chữ trắng */
+}
+
+.dark-mode .inventory-system-text {
+    -fx-text-fill: #5dade2; /* Xanh dương sáng hơn để dễ đọc trên nền tối */
+}
+
+/* Chỉnh màu chữ cho nhãn nhập liệu trong vùng này */
+.dark-mode .inventory-container .label {
+    -fx-text-fill: #bdc3c7;
+}
+/* =========================================================
+   --- BARCODE SCAN BOX (KHUNG QUÉT MÃ VẠCH) ---
+   ========================================================= */
+
+/* 1. Khung chứa (Container) */
+.scan-box {
+    -fx-background-color: #f8f9fa; /* Màu sáng nhẹ */
+    -fx-background-radius: 5;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-padding: 10;
+}
+
+/* 2. Nhãn tiêu đề "Quét mã vạch:" */
+.scan-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #333;
+}
+
+/* 3. Dòng trạng thái mặc định (Sẵn sàng...) */
+.scan-status-default {
+    -fx-font-style: italic;
+    -fx-text-fill: #666;
+    -fx-font-size: 11px;
+}
+
+/* 4. Trạng thái THÀNH CÔNG (Chữ Xanh) */
+.scan-status-success {
+    -fx-text-fill: #28a745; /* Xanh lá đậm */
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+/* 5. Trạng thái LỖI (Chữ Đỏ) */
+.scan-status-error {
+    -fx-text-fill: #dc3545; /* Đỏ đậm */
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+/* ---------------------------------------------------------
+   --- DARK MODE OVERRIDES (GIAO DIỆN TỐI) ---
+   --------------------------------------------------------- */
+
+.dark-mode .scan-box {
+    -fx-background-color: #2c3e50; /* Nền xám tối */
+    -fx-border-color: #444;
+}
+
+.dark-mode .scan-label {
+    -fx-text-fill: #ecf0f1; /* Chữ trắng */
+}
+
+.dark-mode .scan-status-default {
+    -fx-text-fill: #bdc3c7; /* Xám sáng */
+}
+
+/* Trong nền tối, màu xanh/đỏ cần sáng hơn để dễ đọc */
+.dark-mode .scan-status-success {
+    -fx-text-fill: #2ecc71; /* Xanh lá sáng neon */
+}
+
+.dark-mode .scan-status-error {
+    -fx-text-fill: #e74c3c; /* Đỏ sáng neon */
+}
