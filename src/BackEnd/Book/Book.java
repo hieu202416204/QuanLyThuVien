@@ -19,6 +19,14 @@ public class Book {
         this.name = name;
         this.year =  year;
     }
+    public Book(String id, String name, String author,
+                String year, String imagePath){
+        this.id = id;
+        this.author = author;
+        this.name = name;
+        this.year =  year;
+        this.imagePath = imagePath;
+    }
     // getter vaf setter cho imagePath
 
     public void setImagePath(String imagePath) {

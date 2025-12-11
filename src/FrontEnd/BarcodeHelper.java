@@ -36,7 +36,7 @@ public class BarcodeHelper {
     }
 
     /**
-     * Nếu bạn thích QR Code hơn thì dùng hàm này (Vuông)
+     * Nếu thích QR Code hơn thì dùng hàm này (Vuông)
      */
     public static WritableImage createQRCode(String data, int size) {
         try {

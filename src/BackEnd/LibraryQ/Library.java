@@ -2,10 +2,7 @@ package BackEnd.LibraryQ;
 
 import BackEnd.Book.Book;
 import BackEnd.User.User;
-import Database.BookDAO;
-import Database.SettingsDAO;
-import Database.TransactionDAO;
-import Database.UserDAO;
+import Database.*;
 
 import java.util.List;
 
@@ -16,13 +13,14 @@ public class Library {
     private final UserDAO userDAO;
     private final TransactionDAO transactionDAO;
     private final SettingsDAO settingsDAO; // cho biet so luong ngay qua han duoc phep, so tien phai tra tu database
-
+    private final FinancialDAO financialDAO;
     // Constructor: Khởi tạo các DAO
     public Library() {
         this.bookDAO = new BookDAO();
         this.userDAO = new UserDAO();
         this.transactionDAO = new TransactionDAO();
         this.settingsDAO = new SettingsDAO();
+        this.financialDAO = new FinancialDAO();
     }
 
     // ----------------------------------------------------------------------
@@ -42,6 +40,10 @@ public class Library {
     }
     public SettingsDAO getSettingsDAO() {
         return settingsDAO;
+    }
+
+    public FinancialDAO getFinancialDAO() {
+        return this.financialDAO;
     }
 
     public Book findBookById(String bookId) {

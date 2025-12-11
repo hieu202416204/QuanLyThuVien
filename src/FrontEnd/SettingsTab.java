@@ -22,7 +22,8 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
     // Email Controls
     private TextField emailField;
     private PasswordField passField;
-
+    private CheckBox autoAddCheckBox;
+    private CheckBox cbAutoAdd;
     public SettingsTab(Library library, Scene scene, Runnable onLanguageChange, boolean isDarkMode) {
         this.library = library;
         this.scene = scene;
@@ -43,89 +44,163 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         // --- PHẦN 1: GIAO DIỆN & NGÔN NGỮ ---
         VBox generalSection = createGeneralSection(isDarkMode);
 
-        // --- PHẦN 2: QUY ĐỊNH MƯỢN TRẢ (MỚI) ---
+        // --- PHẦN 2: QUY ĐỊNH MƯỢN TRẢ ---
         VBox rulesSection = createRulesSection();
 
         // --- PHẦN 3: CẤU HÌNH EMAIL ---
         VBox emailSection = createEmailSection();
+        VBox dataSection = createDataSection();
 
         // Thêm vào layout chính (Thêm rulesSection vào giữa)
-        mainLayout.getChildren().addAll(pageTitle, generalSection, new Separator(), rulesSection, new Separator(), emailSection);
+        mainLayout.getChildren().addAll(pageTitle, generalSection, new Separator(), rulesSection, new Separator(),dataSection, new Separator(), emailSection);
         this.setContent(mainLayout);
     }
     // chỉnh sửa số ngày mượn tối đa cũng như quy định mức phạt
 //==============================  ============== =========== =============
     private VBox createRulesSection() {
-        VBox box = new VBox(15);
+        // Container chính chứa cả 2 phần
+        VBox mainRulesContainer = new VBox(20);
 
-        Label header = new Label(LanguageManager.getText("header.rules_settings"));
-        header.getStyleClass().add("section-title");
-        header.setStyle("-fx-font-size: 16px; -fx-text-fill: #2980b9;");
+        // =================================================================
+        // KHỐI 1: QUY ĐỊNH TÀI CHÍNH & THỜI GIAN (Cần mật khẩu Admin)
+        // =================================================================
+        VBox financeBox = new VBox(10);
+        financeBox.getStyleClass().add("input-panel");
+        Label headerFinance = new Label(LanguageManager.getText("header.finance_rules"));
+        headerFinance.getStyleClass().add("section-title");
+        headerFinance.setStyle("-fx-text-fill: #e67e22;"); // Màu cam cho phần tiền nong
 
         // 1. Số ngày tối đa
         Label lblDays = new Label(LanguageManager.getText("label.max_days"));
         maxDaysField = new TextField();
-        maxDaysField.setPromptText("60"); // Mặc định cũ
-        maxDaysField.setMaxWidth(150);
-        // Chỉ cho nhập số
-        maxDaysField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                maxDaysField.setText(newValue.replaceAll("[^\\d]", ""));
-            }
+        maxDaysField.setPrefWidth(100);
+        // Validate số
+        maxDaysField.textProperty().addListener((obs, old, val) -> {
+            if (!val.matches("\\d*")) maxDaysField.setText(val.replaceAll("[^\\d]", ""));
         });
 
         // 2. Tiền phạt
         Label lblFine = new Label(LanguageManager.getText("label.fine_amount"));
         fineAmountField = new TextField();
-        fineAmountField.setPromptText("2000"); // Mặc định cũ
-        fineAmountField.setMaxWidth(150);
-        // Chỉ cho nhập số
-        fineAmountField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                fineAmountField.setText(newValue.replaceAll("[^\\d]", ""));
-            }
+        fineAmountField.setPrefWidth(150);
+        // Validate số
+        fineAmountField.textProperty().addListener((obs, old, val) -> {
+            if (!val.matches("\\d*")) fineAmountField.setText(val.replaceAll("[^\\d]", ""));
         });
 
-        // 3. Đơn vị tiền tệ
+        // 3. Đơn vị tiền
         Label lblCurrency = new Label(LanguageManager.getText("label.currency"));
         currencyField = new TextField();
-        currencyField.setPromptText("VNĐ");
-        currencyField.setMaxWidth(100);
+        currencyField.setPrefWidth(80);
 
-        // Nút Lưu riêng cho phần này (hoặc dùng chung nút lưu cuối cùng cũng được, ở đây tôi tạo nút riêng cho từng phần để rõ ràng)
-        Button btnSaveRules = new Button(LanguageManager.getText("btn.save_settings"));
-        btnSaveRules.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnSaveRules.setOnAction(e -> handleSaveRules());
+        // Nút Lưu riêng cho phần Tài chính
+        Button btnSaveFinance = new Button(LanguageManager.getText("btn.save_finance"));
+        btnSaveFinance.setStyle("-fx-background-color: #d35400; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnSaveFinance.setOnAction(e -> handleSaveFinancialRules()); // <--- GỌI HÀM XỬ LÝ RIÊNG
 
         // Load dữ liệu cũ
-        String savedDays = library.getSettingsDAO().getSetting("max_borrow_days");
-        String savedFine = library.getSettingsDAO().getSetting("fine_per_day");
-        String savedCurr = library.getSettingsDAO().getSetting("currency_unit");
+        maxDaysField.setText(library.getSettingsDAO().getSetting("max_borrow_days"));
+        fineAmountField.setText(library.getSettingsDAO().getSetting("fine_per_day"));
+        currencyField.setText(library.getSettingsDAO().getSetting("currency_unit"));
+        if(maxDaysField.getText().isEmpty()) maxDaysField.setText("60");
+        if(fineAmountField.getText().isEmpty()) fineAmountField.setText("2000");
+        if(currencyField.getText().isEmpty()) currencyField.setText("VNĐ");
 
-        // Nếu chưa có trong DB thì hiển thị mặc định
-        maxDaysField.setText(savedDays.isEmpty() ? "60" : savedDays);
-        fineAmountField.setText(savedFine.isEmpty() ? "2000" : savedFine);
-        currencyField.setText(savedCurr.isEmpty() ? "VNĐ" : savedCurr);
+        // Layout phần Finance: Dùng GridPane hoặc VBox lồng nhau
+        financeBox.getChildren().addAll(
+                headerFinance,
+                new Label(LanguageManager.getText("label.max_days")), maxDaysField,
+                new Label(LanguageManager.getText("label.fine_amount")), fineAmountField,
+                new Label(LanguageManager.getText("label.currency")), currencyField,
+                new Separator(),
+                btnSaveFinance
+        );
 
-        box.getChildren().addAll(header, lblDays, maxDaysField, lblFine, fineAmountField, lblCurrency, currencyField, btnSaveRules);
-        return box;
+
+        // =================================================================
+        // KHỐI 2: CẤU HÌNH BARCODE & AUTO-ADD (Không cần mật khẩu hoặc tùy chọn)
+        // =================================================================
+        VBox automationBox = new VBox(10);
+        automationBox.getStyleClass().add("input-panel");
+
+        Label headerAuto = new Label(LanguageManager.getText("header.automation_rules"));
+        headerAuto.getStyleClass().add("section-title");
+        headerAuto.setStyle("-fx-text-fill: #2980b9;"); // Màu xanh cho phần kỹ thuật
+
+        autoAddCheckBox = new CheckBox(LanguageManager.getText("label.auto_add_book"));
+        String autoAddStatus = library.getSettingsDAO().getSetting("auto_add_enabled");
+        autoAddCheckBox.setSelected("true".equals(autoAddStatus));
+
+        Label lblDesc = new Label(LanguageManager.getText("desc.auto_add_book"));
+        lblDesc.setStyle("-fx-font-style: italic; -fx-text-fill: #7f8c8d; -fx-font-size: 11px;");
+
+        // Nút Lưu riêng cho phần Auto
+        Button btnSaveAuto = new Button(LanguageManager.getText("btn.save_auto"));
+        btnSaveAuto.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnSaveAuto.setOnAction(e -> handleSaveAutoSettings()); // <--- GỌI HÀM XỬ LÝ RIÊNG
+
+        automationBox.getChildren().addAll(headerAuto, autoAddCheckBox, lblDesc, new Separator(), btnSaveAuto);
+
+        // Thêm cả 2 khối vào container chính
+        mainRulesContainer.getChildren().addAll(financeBox, automationBox);
+        return mainRulesContainer;
     }
     // phương thức xử lý tiền phạt
-    private void handleSaveRules() {
+    /**
+     * Xử lý lưu Quy định (Cần mật khẩu Admin)
+     */
+    /**
+     * Lưu quy định tiền/ngày (BẮT BUỘC CÓ MẬT KHẨU ADMIN)
+     */
+    /**
+     * Lưu cấu hình Auto-Add (Lưu trực tiếp cho tiện)
+     */
+    private void handleSaveAutoSettings() {
+        boolean isAuto = autoAddCheckBox.isSelected();
+
+        // Lưu DB
+        boolean success = library.getSettingsDAO().saveSetting("auto_add_enabled", String.valueOf(isAuto));
+
+        if (success) {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                    LanguageManager.getText("msg.success"),
+                    "Cấu hình Barcode đã được cập nhật.");
+        } else {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR, LanguageManager.getText("msg.error"), "Lỗi lưu Database.");
+        }
+    }
+    private void handleSaveFinancialRules() {
         String days = maxDaysField.getText().trim();
         String fine = fineAmountField.getText().trim();
         String curr = currencyField.getText().trim();
 
         if (days.isEmpty() || fine.isEmpty() || curr.isEmpty()) {
-            LibraryApp.showAlert(Alert.AlertType.WARNING, LanguageManager.getText("msg.error"), "Vui lòng nhập đầy đủ thông tin.");
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.WARNING, LanguageManager.getText("msg.error"), "Vui lòng nhập đủ thông tin.");
             return;
         }
 
-        library.getSettingsDAO().saveSetting("max_borrow_days", days);
-        library.getSettingsDAO().saveSetting("fine_per_day", fine);
-        library.getSettingsDAO().saveSetting("currency_unit", curr);
+        // Hộp thoại mật khẩu
+        TextInputDialog passDialog = new TextInputDialog();
+        passDialog.setTitle(LanguageManager.getText("title.admin_required"));
+        passDialog.setHeaderText(LanguageManager.getText("header.save_rules"));
+        passDialog.setContentText(LanguageManager.getText("content.enter_admin_pass"));
+        passDialog.getDialogPane().setGraphic(new Label("🔒"));
 
-        LibraryApp.showAlert(Alert.AlertType.INFORMATION, LanguageManager.getText("msg.success"), LanguageManager.getText("msg.settings_saved"));
+        java.util.Optional<String> result = passDialog.showAndWait();
+        if (result.isPresent() && "admin".equals(result.get())) {
+            // Lưu DB
+            library.getSettingsDAO().saveSetting("max_borrow_days", days);
+            library.getSettingsDAO().saveSetting("fine_per_day", fine);
+            library.getSettingsDAO().saveSetting("currency_unit", curr);
+
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                    LanguageManager.getText("msg.success"),
+                    "Đã lưu quy định tài chính thành công!");
+        } else {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR,
+                    LanguageManager.getText("msg.error"),
+                    LanguageManager.getText("msg.wrong_pass"));
+        }
     }
 
     private VBox createGeneralSection(boolean isDarkMode) {
@@ -248,10 +323,12 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
 
     private void handleSaveSettings() {
         String email = emailField.getText().trim();
-        String pass = passField.getText().trim();
+        String pass = passField.getText().trim().replace(" ", "");
 
         if (email.isEmpty() || pass.isEmpty()) {
-            LibraryApp.showAlert(Alert.AlertType.WARNING, LanguageManager.getText("msg.error"), "Vui lòng nhập đủ thông tin.");
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.WARNING,
+                    LanguageManager.getText("msg.error"),
+                    "Vui lòng nhập Email và Mật khẩu ứng dụng.");
             return;
         }
 
@@ -262,6 +339,64 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
             LibraryApp.showAlert(Alert.AlertType.INFORMATION, LanguageManager.getText("msg.success"), LanguageManager.getText("msg.settings_saved"));
         } else {
             LibraryApp.showAlert(Alert.AlertType.ERROR, LanguageManager.getText("msg.error"), "Lỗi Database.");
+        }
+    }
+    // ---  PHƯƠNG THỨC TẠO GIAO DIỆN BACKUP ---
+    private VBox createDataSection() {
+        VBox box = new VBox(15);
+
+        Label header = new Label(LanguageManager.getText("header.data_management"));
+        header.getStyleClass().add("section-header-label");
+
+        // Nút Sao lưu
+        Button btnBackup = new Button("💾 " + LanguageManager.getText("btn.backup"));
+        btnBackup.getStyleClass().add("button-backup");
+        btnBackup.setOnAction(e -> handleBackup());
+
+        Label lblNote = new Label("Lưu ý: Hãy sao lưu dữ liệu thường xuyên để tránh mất mát.");
+        lblNote.getStyleClass().add("label-note-italic");
+        // lblNote.setStyle("-fx-font-style: italic; -fx-text-fill: #666; -fx-font-size: 11px;"); // <-- BỎ DÒNG CŨ NÀY
+
+        box.getChildren().addAll(header, btnBackup, lblNote);
+        return box;
+    }
+    // ---  XỬ LÝ SỰ KIỆN BACKUP ---
+    private void handleBackup() {
+        // 1. Mở hộp thoại chọn nơi lưu file
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle(LanguageManager.getText("title.save_backup"));
+
+        // Tạo tên file gợi ý: library_backup_YYYY-MM-DD.db
+        String date = java.time.LocalDate.now().toString();
+        fileChooser.setInitialFileName("library_backup_" + date + ".db");
+
+        // Chỉ cho lưu file .db
+        fileChooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("SQLite Database", "*.db")
+        );
+
+        java.io.File dest = fileChooser.showSaveDialog(null);
+
+        if (dest != null) {
+            try {
+                // 2. Gọi BackupService
+                boolean success = Boolean.parseBoolean(BackEnd.Utils.BackupService.backupDatabase(dest));
+
+                if (success) {
+                    FrontEnd.LibraryApp.showAlert(
+                            javafx.scene.control.Alert.AlertType.INFORMATION,
+                            LanguageManager.getText("msg.success"),
+                            LanguageManager.getText("msg.backup_success") + "\n" + dest.getAbsolutePath()
+                    );
+                }
+            } catch (Exception ex) {
+                FrontEnd.LibraryApp.showAlert(
+                        javafx.scene.control.Alert.AlertType.ERROR,
+                        LanguageManager.getText("msg.error"),
+                        "ERROR " + ex.getMessage()
+                );
+                ex.printStackTrace();
+            }
         }
     }
 }

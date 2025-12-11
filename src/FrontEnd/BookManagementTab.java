@@ -5,14 +5,17 @@ import BackEnd.LibraryQ.Library;
 import BackEnd.Utils.LanguageManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.List;
 
@@ -23,53 +26,64 @@ public class BookManagementTab extends VBox {
     private final TableView<Book> bookTable = new TableView<>();
     private final BookGalleryTab galleryTab;
 
-    // --- KHAI BÁO CÁC FIELDS (Controls và Data) ---
-    private final Button viewHistoryBtn = new Button("📜 " + LanguageManager.getText("tab.history"));
-    private final Button editBtn = new Button("✏️ " + LanguageManager.getText("btn.edit"));
-    private final Button addBtn = new Button("➕ " + LanguageManager.getText("btn.add"));
-    private final Button deleteBtn = new Button("❌ " + LanguageManager.getText("btn.delete"));
-    private final TextField idField = createTextField("ID");
-    private final TextField nameField = createTextField("Name");
-    private final TextField authorField = createTextField("Author");
-    private final TextField yearField = createTextField("Year");
+    // --- KHAI BÁO CÁC FIELDS ---
+    // Nút bấm
+    private final Button viewHistoryBtn = new Button();
+    private final Button editBtn = new Button();
+    private final Button addBtn = new Button();
+    private final Button deleteBtn = new Button();
+    private final Button printBarcodeBtn = new Button();
 
-    // currentImagePath lưu trữ đường dẫn tuyệt đối (từ FileChooser)
-    private String currentImagePath = "";
-    private final Label imagePathLabel = new Label("Chưa có ảnh bìa");
-    private File selectedUploadFile = null; // File người dùng mới chọn từ máy tính
-    private String existingFileName = null; // Tên file cũ đang có trong DB (dùng cho chức năng Edit)
-    // Khai báo các HBox ở cấp độ class
-    private HBox controls;
-    private HBox imageControls;
+    // Ô nhập liệu
+    private final TextField idField = new TextField();
+    private final TextField nameField = new TextField();
+    private final TextField authorField = new TextField();
+    private final TextField yearField = new TextField();
+    private final TextField isbnField = new TextField(); // Ô nhập ISBN
+
+    // Xử lý ảnh
+    private File selectedUploadFile = null;
+    private String existingFileName = null;
+    private final Label imagePathLabel = new Label();
+
+    // Layout chứa các nút
+    private VBox controlsLayout;
+    private final Button resetBtn = new Button("🔄 Làm mới");
 
     public BookManagementTab(Library library, ObservableList<Book> bookData, FlowPane flowPane, BookGalleryTab galleryTab) {
         this.library = library;
         this.bookData = bookData;
         this.galleryTab = galleryTab;
 
-        initializeTable();
-        initializeControls();
-        initializeSelectionListener();
-
-        // Thêm tất cả các khối vào VBox chính
-        this.getChildren().addAll(bookTable, controls, imageControls);
-
         this.setPadding(new Insets(10));
         this.setSpacing(10);
+
+        initializeTable();      // 1. Tạo bảng
+        initializeControls();   // 2. Tạo nút và ô nhập (Khởi tạo controlsLayout ở đây)
+        initializeSelectionListener(); // 3. Sự kiện chọn dòng
+
+        // [QUAN TRỌNG] SỬA LỖI NULL POINTER Ở ĐÂY
+        // Chỉ thêm controlsLayout (đã chứa tất cả nút) và bảng sách
+        // Đảm bảo controlsLayout không null vì đã gọi initializeControls() ở trên
+        this.getChildren().addAll(controlsLayout, bookTable);
     }
 
-    // --- 1. INITIALIZE TABLE ---
+    // --- 1. KHỞI TẠO BẢNG ---
     private void initializeTable() {
-        TableColumn<Book, String> colId = new TableColumn<>(LanguageManager.getText("col.id"));        colId.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getId()));
+        TableColumn<Book, String> colId = new TableColumn<>(LanguageManager.getText("col.id"));
+        colId.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getId()));
         colId.setPrefWidth(80);
 
-        TableColumn<Book, String> colName = new TableColumn<>(LanguageManager.getText("col.name"));        colName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
+        TableColumn<Book, String> colName = new TableColumn<>(LanguageManager.getText("col.name"));
+        colName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
         colName.setPrefWidth(200);
 
-        TableColumn<Book, String> colAuthor = new TableColumn<>(LanguageManager.getText("col.author"));        colAuthor.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getAuthor()));
+        TableColumn<Book, String> colAuthor = new TableColumn<>(LanguageManager.getText("col.author"));
+        colAuthor.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getAuthor()));
         colAuthor.setPrefWidth(150);
 
-        TableColumn<Book, String> colYear = new TableColumn<>(LanguageManager.getText("col.year"));        colYear.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getYear()));
+        TableColumn<Book, String> colYear = new TableColumn<>(LanguageManager.getText("col.year"));
+        colYear.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getYear()));
         colYear.setPrefWidth(80);
 
         TableColumn<Book, String> colStatus = new TableColumn<>(LanguageManager.getText("col.status"));
@@ -77,381 +91,459 @@ public class BookManagementTab extends VBox {
                 data.getValue().isStatus()
                         ? LanguageManager.getText("status.available")
                         : LanguageManager.getText("status.borrowed")
-        ));        colStatus.setPrefWidth(100);
+        ));
+        colStatus.setPrefWidth(100);
 
         bookTable.getColumns().addAll(colId, colName, colAuthor, colYear, colStatus);
         bookTable.setItems(bookData);
     }
 
-    // --- 2. INITIALIZE CONTROLS ---
+    // --- 2. KHỞI TẠO NÚT BẤM & LAYOUT (ĐÃ TÁI CẤU TRÚC) ---
     private void initializeControls() {
-        // 1. Cấu hình ô ID: Bắt sự kiện Enter (Máy quét mã vạch gửi phím này)
-        idField.setPromptText(BackEnd.Utils.LanguageManager.getText("field.id"));
-        idField.setOnAction(e -> handleAutoFillBook());
+        // --- A. CẤU HÌNH VÀ GOM NHÓM INPUT FIELDS ---
 
-        // 2. Nút nhỏ "Lấy thông tin" (Dành cho người nhập tay muốn auto-fill)
-        Button autoFillBtn = new Button(BackEnd.Utils.LanguageManager.getText("btn.autofill"));
-        autoFillBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 5;");
-        autoFillBtn.setOnAction(e -> handleAutoFillBook());
+        // 1. Áp dụng CSS Class cho các ô nhập liệu (Đã định nghĩa trong bài Dark Mode)
+        idField.getStyleClass().add("modern-textfield");
+        nameField.getStyleClass().add("modern-textfield");
+        authorField.getStyleClass().add("modern-textfield");
+        yearField.getStyleClass().add("modern-textfield");
+        isbnField.getStyleClass().add("modern-textfield");
 
-        // Gom ô ID và nút AutoFill vào một nhóm
-        HBox idBox = new HBox(5, idField, autoFillBtn);
-        idBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        // 2. Cấu hình hành vi (Behavior)
+        isbnField.setPromptText(LanguageManager.getText("field.scan_isbn"));
+        isbnField.setPrefWidth(120);
+        isbnField.setOnAction(e -> handleAutoFillBook()); // False: Scanner/Enter -> Dùng Setting
 
-        // 3. Cấu hình các ô nhập liệu khác
-        nameField.setPromptText(BackEnd.Utils.LanguageManager.getText("field.name"));
-        authorField.setPromptText(BackEnd.Utils.LanguageManager.getText("field.author"));
-        yearField.setPromptText(BackEnd.Utils.LanguageManager.getText("field.year"));
+        Button autoFillBtn = new Button("🔍");
+        autoFillBtn.getStyleClass().add("icon-button"); // Nút tròn xanh
+        autoFillBtn.setTooltip(new Tooltip(LanguageManager.getText("btn.autofill")));
+        autoFillBtn.setOnAction(e -> handleAutoFillBook()); // True: Click -> Luôn xem trước (Thủ công)
 
-        // 4. Cấu hình các nút chức năng chính
-        addBtn.setText(BackEnd.Utils.LanguageManager.getText("btn.add"));
-        addBtn.setOnAction(e -> handleAddBook(idField, nameField, authorField, yearField));
+        // 3. Gom nhóm ISBN (Label + Field + Button)
+        HBox isbnGroup = new HBox(5, new Label(LanguageManager.getText("label.isbn")), isbnField, autoFillBtn);
+        isbnGroup.setAlignment(Pos.CENTER_LEFT);
 
-        editBtn.setText(BackEnd.Utils.LanguageManager.getText("btn.edit"));
+        // 4. Gom nhóm Form Nhập (FlowPane)
+        FlowPane inputPane = new FlowPane(10, 10);
+        inputPane.getStyleClass().add("input-panel"); // Class chung cho panel nhập liệu
+
+        // Thêm các trường nhập liệu
+        inputPane.getChildren().addAll(
+                isbnGroup,
+                createInputGroup(LanguageManager.getText("col.id") + ":", idField, 100),
+                createInputGroup(LanguageManager.getText("col.name") + ":", nameField, 200),
+                createInputGroup(LanguageManager.getText("col.author") + ":", authorField, 150),
+                createInputGroup(LanguageManager.getText("col.year") + ":", yearField, 80)
+        );
+        inputPane.setAlignment(Pos.CENTER_LEFT);
+        inputPane.setPadding(new Insets(10));
+        inputPane.getStyleClass().add("input-panel");
+        // --- B. CẤU HÌNH IMAGE BOX ---
+        Button selectImageBtn = new Button(LanguageManager.getText("btn.select_img"));
+        selectImageBtn.setOnAction(e -> handleSelectImage());
+
+        imagePathLabel.setText(LanguageManager.getText("label.no_cover"));
+        imagePathLabel.setStyle("-fx-font-style: italic; -fx-text-fill: #666;");
+
+        HBox imageBox = new HBox(10, selectImageBtn, imagePathLabel, new Label(LanguageManager.getText("msg.scan_hint")));
+        imageBox.setAlignment(Pos.CENTER_LEFT);
+        imageBox.setPadding(new Insets(5, 0, 5, 0));
+
+        // --- C. THANH CÔNG CỤ (ACTION TOOLBAR) ---
+
+        // 1. Cấu hình Nút
+        addBtn.setText(LanguageManager.getText("btn.add"));
+        addBtn.getStyleClass().addAll("action-btn", "btn-green");
+        addBtn.setOnAction(e -> handleAddBook(false)); // False: Bấm nút -> Luôn là chế độ thủ công
+
+        editBtn.setText(LanguageManager.getText("btn.edit"));
+        editBtn.getStyleClass().addAll("action-btn", "btn-blue");
         editBtn.setDisable(true);
         editBtn.setOnAction(e -> handleEditBook());
 
-        deleteBtn.setText(BackEnd.Utils.LanguageManager.getText("btn.delete"));
+        deleteBtn.setText(LanguageManager.getText("btn.delete"));
         deleteBtn.getStyleClass().add("button-delete");
+        deleteBtn.setDisable(true);
         deleteBtn.setOnAction(e -> handleDeleteBook());
 
-        viewHistoryBtn.setText(BackEnd.Utils.LanguageManager.getText("btn.history_book"));
+        viewHistoryBtn.setText(LanguageManager.getText("btn.history_book"));
+        viewHistoryBtn.getStyleClass().addAll("action-btn", "btn-gray");
         viewHistoryBtn.setDisable(true);
         viewHistoryBtn.setOnAction(e -> handleViewBookHistory());
 
-        // 5. Layout hàng nút chức năng
-        controls = new HBox(10, idBox, nameField, authorField, yearField, addBtn, deleteBtn, editBtn, viewHistoryBtn);
-        controls.setPadding(new Insets(10));
-        controls.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        printBarcodeBtn.setText("🖨️ " + LanguageManager.getText("btn.print_barcode"));
+        printBarcodeBtn.getStyleClass().addAll("action-btn", "btn-purple");
+        printBarcodeBtn.setDisable(true);
+        printBarcodeBtn.setOnAction(e -> handlePrintBookBarcode());
 
-        // 6. Cấu hình phần chọn ảnh
-        Button selectImageBtn = new Button(BackEnd.Utils.LanguageManager.getText("btn.select_img"));
-        selectImageBtn.setOnAction(e -> handleSelectImage());
+        // 2. Nút Reset (Làm mới)
+        resetBtn.setText(LanguageManager.getText("btn.reset"));
+        resetBtn.getStyleClass().addAll("action-btn", "btn-blue");
+        resetBtn.setTooltip(new Tooltip(LanguageManager.getText("tooltip.reset")));
+        resetBtn.setOnAction(e -> clearFieldsAndImageStatus()); // Gọi hàm dọn dẹp
 
-        imagePathLabel.setStyle("-fx-font-style: italic; -fx-text-fill: #666;");
+        // 3. Layout Toolbar (Action HBox)
+        HBox actionToolbar = new HBox(15);
+        actionToolbar.setAlignment(Pos.CENTER_LEFT);
+        actionToolbar.setPadding(new Insets(10, 0, 10, 0));
+        actionToolbar.getChildren().addAll(
+                resetBtn,
+                addBtn, editBtn, deleteBtn,
+                new Separator(javafx.geometry.Orientation.VERTICAL),
+                viewHistoryBtn, printBarcodeBtn
+        );
 
-        // Label hướng dẫn quét mã
-        Label hintLabel = new Label(BackEnd.Utils.LanguageManager.getText("msg.scan_hint"));
-        hintLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888; -fx-font-style: italic;");
+        // --- D. TỔNG HỢP (CLASS LEVEL) ---
+        controlsLayout = new VBox(10); // controlsLayout là VBox đã khai báo ở class level
+        controlsLayout.getChildren().addAll(inputPane, imageBox, actionToolbar);
 
-        VBox imageBox = new VBox(5, new HBox(10, selectImageBtn, imagePathLabel), hintLabel);
-        imageControls = new HBox(10, imageBox);
-        imageControls.setPadding(new Insets(10, 0, 0, 0));
+        // Listener bật tắt nút (Giữ nguyên)
+        bookTable.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> {
+            boolean hasSel = newVal != null;
+            viewHistoryBtn.setDisable(!hasSel);
+            editBtn.setDisable(!hasSel);
+            printBarcodeBtn.setDisable(!hasSel);
+            deleteBtn.setDisable(!hasSel);
+            addBtn.setDisable(hasSel);
+        });
     }
-    //=====================================================================
-    // --- Thêm hàm xử lý Auto Fill ---
+
     /**
-     * Tự động lấy thông tin sách từ Google Books API dựa trên ISBN trong ô ID
+     * Hàm phụ trợ: Tạo một nhóm gồm Label + TextField có Style chuẩn
+     * (Cần có nếu bạn chưa định nghĩa nó ở nơi khác)
      */
+    private HBox createInputGroup(String labelText, TextField field, double width) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("input-label");
+
+        field.setPrefWidth(width);
+        // field đã được thêm class .modern-textfield ở initializeControls()
+
+        HBox box = new HBox(5, label, field);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
+    }
+
+    // --- 3. CÁC CHỨC NĂNG CHÍNH ---
+
+    /**
+     * @param isSilent: Nếu true -> Không hiện thông báo thành công (dùng cho Auto-Add)
+     */
+    private void handleAddBook(boolean isSilent) {
+        String id = idField.getText().trim();
+        String name = nameField.getText().trim();
+
+        if (!id.isEmpty() && !name.isEmpty()) {
+            // Kiểm tra trùng ID
+            if (library.findBookById(id) != null) {
+                LibraryApp.showAlert(Alert.AlertType.ERROR,
+                        LanguageManager.getText("msg.error"),
+                        String.format(LanguageManager.getText("msg.id_duplicate_fmt"), id));
+                return;
+            }
+
+            try {
+                Book newBook = new Book(id, name, authorField.getText().trim(), yearField.getText().trim());
+
+                if (selectedUploadFile != null) {
+                    String savedName = BackEnd.Utils.FileUtil.saveImageToLocal(selectedUploadFile);
+                    newBook.setImagePath(savedName);
+                }
+
+                library.addBook(newBook);
+                updateView();
+
+                // Dọn dẹp form ngay lập tức để sẵn sàng cho cuốn sau
+                clearFieldsAndImageStatus();
+
+                if (isSilent) {
+                    // CHẾ ĐỘ TỰ ĐỘNG: Không hiện Alert, chỉ báo nhỏ ở góc hoặc Beep
+                    java.awt.Toolkit.getDefaultToolkit().beep(); // Phát tiếng tít
+                    imagePathLabel.setText(String.format(LanguageManager.getText("msg.auto_save_success"), name));
+                    imagePathLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+                } else {
+                    // CHẾ ĐỘ THỦ CÔNG: Hiện thông báo chúc mừng
+                    LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                            LanguageManager.getText("msg.success"),
+                            LanguageManager.getText("msg.book_added"));
+                }
+
+            } catch (Exception e) {
+                LibraryApp.showAlert(Alert.AlertType.ERROR, LanguageManager.getText("msg.error"), e.getMessage());
+            }
+        } else {
+            LibraryApp.showAlert(Alert.AlertType.ERROR, LanguageManager.getText("msg.error"), LanguageManager.getText("msg.missing_input"));
+        }
+    }
+    private void handleEditBook() {
+        Book selected = bookTable.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+
+        if (!nameField.getText().isEmpty()) {
+            selected.setName(nameField.getText());
+            selected.setAuthor(authorField.getText());
+            selected.setYear(yearField.getText());
+
+            if (selectedUploadFile != null) {
+                try {
+                    String newName = BackEnd.Utils.FileUtil.saveImageToLocal(selectedUploadFile);
+                    if (selected.getImagePath() != null) BackEnd.Utils.ImageCache.remove(selected.getImagePath());
+                    selected.setImagePath(newName);
+                } catch (Exception e) { e.printStackTrace(); }
+            }
+
+            library.getBookDAO().updateBook(selected);
+            updateView();
+            clearFieldsAndImageStatus();
+            LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                    LanguageManager.getText("msg.success"),
+                    LanguageManager.getText("msg.update_success"));
+        }
+    }
+
+    @FXML
+    private void handleDeleteBook() {
+        Book selected = bookTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            LibraryApp.showAlert(Alert.AlertType.WARNING,
+                    LanguageManager.getText("msg.error"),
+                    LanguageManager.getText("msg.select_delete"));
+            return;
+        }
+
+        if (!selected.isStatus()) {
+            LibraryApp.showAlert(Alert.AlertType.WARNING,
+                    LanguageManager.getText("msg.error"),
+                    LanguageManager.getText("msg.book_borrowed"));
+            return;
+        }
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle(LanguageManager.getText("title.confirm_delete"));
+        confirmAlert.setHeaderText(null);
+
+        // Format nội dung xác nhận với Tên sách
+        String content = String.format(LanguageManager.getText("msg.confirm_delete_fmt"), selected.getName());
+        confirmAlert.setContentText(content);
+
+        if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            boolean success = library.deleteBook(selected.getId());
+
+            if (success) {
+                if (selected.getImagePath() != null) {
+                    BackEnd.Utils.ImageCache.remove(selected.getImagePath());
+                }
+                updateView();
+                clearFieldsAndImageStatus();
+
+                LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                        LanguageManager.getText("msg.success"),
+                        LanguageManager.getText("msg.delete_success"));
+            } else {
+                LibraryApp.showAlert(Alert.AlertType.ERROR,
+                        LanguageManager.getText("msg.error"),
+                        LanguageManager.getText("msg.delete_error"));
+            }
+        }
+    }
+
     private void handleAutoFillBook() {
-        String isbn = idField.getText().trim();
+        String isbn = isbnField.getText().trim();
         if (isbn.isEmpty()) return;
 
-        // Thông báo đang tải
-        imagePathLabel.setText(BackEnd.Utils.LanguageManager.getText("msg.fetching_info"));
+        imagePathLabel.setText(LanguageManager.getText("msg.fetching_info"));
+        imagePathLabel.setStyle("-fx-text-fill: black;"); // Reset màu
 
-        // Chạy Thread ngầm để không đơ giao diện
         new Thread(() -> {
-            BackEnd.Book.Book fetchedBook = BackEnd.Utils.BookInfoHelper.fetchBookDetails(isbn);
+            Book fetched = BackEnd.Utils.BookInfoHelper.fetchBookDetails(isbn);
 
-            // Cập nhật giao diện (Phải dùng Platform.runLater)
             javafx.application.Platform.runLater(() -> {
-                if (fetchedBook != null) {
-                    // 1. Điền thông tin văn bản
-                    nameField.setText(fetchedBook.getName());
-                    authorField.setText(fetchedBook.getAuthor());
-                    yearField.setText(fetchedBook.getYear());
+                if (fetched != null) {
+                    // 1. Điền thông tin
+                    nameField.setText(fetched.getName());
+                    authorField.setText(fetched.getAuthor());
+                    yearField.setText(fetched.getYear());
 
-                    // 2. Xử lý Ảnh bìa (Tải về file tạm)
-                    if (fetchedBook.getImagePath() != null) {
+                    // Tải ảnh tạm
+                    if (fetched.getImagePath() != null) {
                         try {
-                            File tempCover = BackEnd.Utils.BookInfoHelper.downloadCoverImage(fetchedBook.getImagePath());
-                            if (tempCover != null) {
-                                // QUAN TRỌNG: Lưu file tạm vào biến này để lát nữa hàm AddBook sẽ dùng
-                                this.selectedUploadFile = tempCover;
-                                imagePathLabel.setText("Đã tải ảnh bìa từ Internet.");
+                            File temp = BackEnd.Utils.BookInfoHelper.downloadCoverImage(fetched.getImagePath());
+                            if (temp != null) {
+                                this.selectedUploadFile = temp;
+                                imagePathLabel.setText(LanguageManager.getText("msg.img_downloaded"));
                             }
-                        } catch (Exception ex) {
-                            imagePathLabel.setText("Lỗi tải ảnh bìa: " + ex.getMessage());
-                        }
-                    } else {
-                        imagePathLabel.setText(BackEnd.Utils.LanguageManager.getText("msg.fill_success"));
+                        } catch(Exception e) {}
                     }
 
-                    // Phát tiếng Beep báo thành công
-                    java.awt.Toolkit.getDefaultToolkit().beep();
+                    // 2. Sinh ID quản lý (Bxxx) nếu chưa nhập
+                    if (idField.getText().isEmpty()) {
+                        String newId = generateNextBookId();
+                        idField.setText(newId);
+                    }
+
+                    // 3. KIỂM TRA CHẾ ĐỘ TỰ ĐỘNG
+                    String autoAdd = library.getSettingsDAO().getSetting("auto_add_enabled");
+
+                    if ("true".equals(autoAdd)) {
+                        // TỰ ĐỘNG LƯU (Chế độ im lặng)
+                        handleAddBook(true);
+                    } else {
+                        // THỦ CÔNG: Chỉ điền thông tin, chờ người dùng sửa/bấm thêm
+                        idField.requestFocus();
+                        // Có thể bỏ Alert "Thành công" ở đây để đỡ phiền, chỉ cần thấy chữ hiện ra là được
+                    }
 
                 } else {
-                    imagePathLabel.setText(BackEnd.Utils.LanguageManager.getText("msg.fill_not_found"));
-                    LibraryApp.showAlert(Alert.AlertType.WARNING, "Auto-Fill",
-                            BackEnd.Utils.LanguageManager.getText("msg.fill_not_found"));
+                    // [YÊU CẦU CỦA BẠN] KHÔNG TÌM THẤY -> HIỆN LỖI LÊN MÀN HÌNH
+                    imagePathLabel.setText(LanguageManager.getText("msg.fill_not_found"));
+                    imagePathLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+
+                    LibraryApp.showAlert(Alert.AlertType.ERROR,
+                            LanguageManager.getText("msg.error"),
+                            LanguageManager.getText("msg.fill_not_found") + "\n(ISBN: " + isbn + ")");
+
+                    isbnField.selectAll(); // Bôi đen để quét lại mã khác
                 }
             });
         }).start();
     }
-    // ========================================================================
 
-    // --- 3. LOGIC XỬ LÝ SỰ KIỆN ---
-
-    /**
-     * Thêm sách: Ghi vào DB và cập nhật ObservableList/UI.
-     */
-    private void handleAddBook(TextField idField, TextField nameField, TextField authorField, TextField yearField) {
-        if (!idField.getText().isEmpty() && !nameField.getText().isEmpty()) {
-            try {
-                Book newBook = new Book(
-                        idField.getText(),
-                        nameField.getText(),
-                        authorField.getText(),
-                        yearField.getText()
-                );
-
-                // LOGIC LƯU ẢNH:
-                // selectedUploadFile có thể đến từ việc chọn thủ công HOẶC từ Auto-fill tải về
-                if (selectedUploadFile != null) {
-                    // Copy file tạm/file chọn vào thư mục "images" chính thức
-                    String savedFileName = BackEnd.Utils.FileUtil.saveImageToLocal(selectedUploadFile);
-                    newBook.setImagePath(savedFileName);
-                }
-
-                // Ghi vào DB
-                library.addBook(newBook);
-
-                // Cập nhật bảng
-                updateView();
-
-                // Thông báo thành công
-                LibraryApp.showAlert(Alert.AlertType.INFORMATION,
-                        BackEnd.Utils.LanguageManager.getText("msg.success"),
-                        BackEnd.Utils.LanguageManager.getText("msg.book_added"));
-
-                // --- QUAN TRỌNG: DỌN DẸP SẠCH SẼ SAU KHI THÊM ---
-                clearFieldsAndImageStatus();
-
-            } catch (Exception e) {
-                LibraryApp.showAlert(Alert.AlertType.ERROR,
-                        BackEnd.Utils.LanguageManager.getText("msg.error"),
-                        "Lỗi hệ thống: " + e.getMessage());
-            }
-
-        } else {
-            LibraryApp.showAlert(Alert.AlertType.ERROR,
-                    BackEnd.Utils.LanguageManager.getText("msg.error"),
-                    "ID và Tên sách là bắt buộc.");
-        }
-    }
-
-    /**
-     * Xóa sách: Xóa khỏi DB và cập nhật UI.
-     */
-    private void handleDeleteBook() {
-        Book selected = bookTable.getSelectionModel().getSelectedItem();
-        if (selected != null) {
-            boolean success = library.deleteBook(selected.getId()); // Gọi DAO
-            if (success) {
-                updateView(); // Cập nhật lại UI từ DB
-                clearFieldsAndImageStatus();
-                LibraryApp.showAlert(Alert.AlertType.INFORMATION,"Thành công","Sách ID " + selected.getId() + " (" + selected.getName() + ") đã được xóa.");
-            } else {
-                LibraryApp.showAlert(Alert.AlertType.ERROR,"Lỗi Xóa Sách","Không thể xóa sách khỏi thư viện.");
-            }
-        } else {
-            LibraryApp.showAlert(Alert.AlertType.WARNING,"Cảnh báo","Vui lòng chọn một cuốn sách trong danh sách để xóa.");
-        }
-    }
-
-    /**
-     * Cập nhật sách: Cập nhật đối tượng và ghi vào DB.
-     */
-    private void handleEditBook() {
-        Book selectedBook = bookTable.getSelectionModel().getSelectedItem();
-        if (selectedBook == null) return;
-
-        if (!nameField.getText().isEmpty()) {
-            try {
-                selectedBook.setName(nameField.getText());
-                selectedBook.setAuthor(authorField.getText());
-                selectedBook.setYear(yearField.getText());
-
-                // 1. Nếu người dùng chọn ảnh mới -> Copy ảnh mới, cập nhật tên mới
-                if (selectedUploadFile != null) {
-                    String newFileName = BackEnd.Utils.FileUtil.saveImageToLocal(selectedUploadFile);
-                    // --- Xóa cache ảnh cũ nếu có ---
-                    if (selectedBook.getImagePath() != null) {
-                        BackEnd.Utils.ImageCache.remove(selectedBook.getImagePath());
-                    }
-                    selectedBook.setImagePath(newFileName);
-                }
-                // 2. Nếu không chọn ảnh mới -> Giữ nguyên tên file cũ (không làm gì cả, vì object selectedBook đã có sẵn imagePath)
-
-                library.getBookDAO().updateBook(selectedBook);
-                updateView();
-                clearFieldsAndImageStatus();
-                LibraryApp.showAlert(Alert.AlertType.INFORMATION, "Thành công", "Đã cập nhật sách.");
-
-            } catch (Exception e) {
-                LibraryApp.showAlert(Alert.AlertType.ERROR, "Lỗi", "Lỗi khi lưu file ảnh: " + e.getMessage());
-            }
-        }
-    }
-
-    /**
-     * Chọn file ảnh bìa 
-     */
     private void handleSelectImage() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Chọn Ảnh Bìa Sách");
-        fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg")
-        );
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg"));
+        File f = fileChooser.showOpenDialog(null);
+        if (f != null) {
+            try {
+                BufferedImage original = ImageIO.read(f);
+                if (original == null) return;
 
-        Stage stage = (Stage) this.getScene().getWindow();
-        File selectedFile = fileChooser.showOpenDialog(stage);
-
-        if (selectedFile != null) {
-            this.selectedUploadFile = selectedFile; // Lưu file gốc
-            imagePathLabel.setText("Đã chọn: " + selectedFile.getName());
+                File finalFile = f;
+                if (original.getWidth() > 600) {
+                    int newHeight = (int) ((double) original.getHeight() / original.getWidth() * 600);
+                    BufferedImage resized = XuLiAnh.ImageResizer.resizeImage(original, 600, newHeight);
+                    File temp = File.createTempFile("cover_opt_", ".png");
+                    ImageIO.write(resized, "png", temp);
+                    finalFile = temp;
+                    imagePathLabel.setText(LanguageManager.getText("label.img_optimized") + " " + f.getName());
+                } else {
+                    imagePathLabel.setText(LanguageManager.getText("label.selected") + " " + f.getName());                }
+                this.selectedUploadFile = finalFile;
+            } catch (Exception e) { e.printStackTrace(); }
         }
     }
 
-    /**
-     * Xem lịch sử sách: Sử dụng TransactionDAO thay vì In-memory History.
-     */
+    private void handlePrintBookBarcode() {
+        Book selected = bookTable.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+
+        javafx.stage.FileChooser fc = new javafx.stage.FileChooser();
+        fc.setInitialFileName("Barcode_" + selected.getId() + ".pdf");
+        fc.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+        File dest = fc.showSaveDialog(null);
+        if (dest != null) {
+            FrontEnd.CardGenerator.saveBookBarcodeToPDF(selected, dest);
+            LibraryApp.showAlert(Alert.AlertType.INFORMATION, LanguageManager.getText("msg.success"), LanguageManager.getText("msg.barcode_saved"));
+        }
+    }
+
     private void handleViewBookHistory() {
         Book selectedBook = bookTable.getSelectionModel().getSelectedItem();
         if (selectedBook == null) return;
 
         Alert historyAlert = new Alert(Alert.AlertType.INFORMATION);
-        historyAlert.setTitle("Lịch sử Giao dịch");
-        historyAlert.setHeaderText("Lịch sử Mượn/Trả của Sách ID: " + selectedBook.getId() + " - " + selectedBook.getName());
-        ButtonType btnExport = new ButtonType("📤 Xuất Excel", ButtonBar.ButtonData.OTHER);
-        ButtonType btnClose = new ButtonType("Đóng", ButtonBar.ButtonData.CANCEL_CLOSE);
-        historyAlert.getButtonTypes().setAll(btnExport, btnClose);
-        TextArea historyArea = new TextArea();
-        historyArea.setEditable(false);
-        historyArea.setPrefRowCount(15);
-        historyArea.setPrefColumnCount(50);
+        historyAlert.setTitle("Lịch sử");
+        historyAlert.setHeaderText("Lịch sử: " + selectedBook.getName());
 
+        TextArea area = new TextArea();
+        area.setEditable(false);
+        List<String[]> list = library.getTransactionDAO().getBookHistory(selectedBook.getId());
         StringBuilder sb = new StringBuilder();
+        for(String[] s : list) sb.append(s[0]).append(" | ").append(s[1]).append(" | ").append(s[2]).append("\n");
+        if(list.isEmpty()) sb.append("Chưa có giao dịch.");
+        area.setText(sb.toString());
 
-        // 1. GỌI TRANSACTION DAO ĐỂ LẤY DỮ LIỆU TỪ DB
-        // Dữ liệu trả về là List<String[]>, mỗi phần tử là {User ID, Ngày Mượn, Ngày Trả}
-        List<String[]> bookHistory = library.getTransactionDAO().getBookHistory(selectedBook.getId());
-
-        if (!bookHistory.isEmpty()) {
-            sb.append(String.format("%-10s | %-12s | %-12s\n", "User ID", "Ngày Mượn", "Ngày Trả"));
-            sb.append("---------------------------------------------------\n");
-
-            for (String[] record : bookHistory) {
-                String userId = record[0];
-                String muon = record[1];
-                String tra = record[2] != null ? record[2] : "ĐANG MƯỢN";
-
-                sb.append(String.format("%-10s | %-12s | %-12s\n", userId, muon, tra));
-            }
-        } else {
-            sb.append("Chưa có lịch sử giao dịch nào cho cuốn sách này.");
-        }
-
-
-        historyArea.setText(sb.toString());
-        VBox dialogContent = new VBox(10, new Label("Chi tiết lịch sử:"), historyArea);
-        java.util.Optional<ButtonType> result = historyAlert.showAndWait();
-
-        if (result.isPresent() && result.get() == btnExport) {
-            if (bookHistory.isEmpty()) {
-                LibraryApp.showAlert(Alert.AlertType.WARNING, "Rỗng", "Không có dữ liệu.");
-                return;
-            }
-
-            FileChooser fc = new FileChooser();
-            fc.setTitle("Lưu Lịch sử Sách");
-            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
-            fc.setInitialFileName("LichSu_Sach_" + selectedBook.getId() + ".csv");
-            File file = fc.showSaveDialog(null);
-
-            if (file != null) {
-                boolean ok = BackEnd.Utils.ExportUtil.exportBookSpecificHistoryToCSV(bookHistory, file);
-                if (ok) LibraryApp.showAlert(Alert.AlertType.INFORMATION, "Xong", "Đã xuất file.");
-            }
-        }
+        historyAlert.getDialogPane().setContent(area);
+        historyAlert.showAndWait();
     }
 
-    // --- 4. CÁC PHƯƠNG THỨC HỖ TRỢ ---
-
-    /**
-     * Lắng nghe sự kiện chọn hàng: Tải dữ liệu và ImagePath hiện tại.
-     */
     private void initializeSelectionListener() {
         bookTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-            viewHistoryBtn.setDisable(newSelection == null);
-            editBtn.setDisable(newSelection == null);
-            addBtn.setDisable(newSelection != null);
-
             if (newSelection != null) {
-                // Đổ dữ liệu vào các trường nhập liệu khi chọn sách
                 idField.setText(newSelection.getId());
                 nameField.setText(newSelection.getName());
                 authorField.setText(newSelection.getAuthor());
                 yearField.setText(newSelection.getYear());
 
-                // Cập nhật currentImagePath bằng đường dẫn CŨ từ DB
                 this.existingFileName = newSelection.getImagePath();
-                this.selectedUploadFile = null; // Reset file upload mới
+                this.selectedUploadFile = null;
 
                 imagePathLabel.setText(existingFileName != null && !existingFileName.isEmpty()
-                        ? "Ảnh hiện tại: " + existingFileName
-                        : "Chưa có ảnh.");
+                        ? "Ảnh hiện tại: " + new File(existingFileName).getName()
+                        : LanguageManager.getText("label.no_cover"));
 
                 idField.setEditable(false);
             } else {
-                // Xóa nội dung và reset trạng thái khi không chọn sách
                 clearFieldsAndImageStatus();
                 idField.setEditable(true);
             }
         });
     }
 
-    /**
-     * Hàm dọn dẹp form, đưa về trạng thái trắng tinh
-     */
+    // ========================== Hàm này dùng để thực hiện nhiệm vụ hoàn tác ===========
     private void clearFieldsAndImageStatus() {
-        // 1. Xóa trắng các ô nhập liệu
+        // 1. Xóa nội dung
+        isbnField.clear();
         idField.clear();
         nameField.clear();
         authorField.clear();
         yearField.clear();
 
-        // 2. Reset biến lưu file ảnh về null (Tránh cuốn sau bị dính ảnh cuốn trước)
-        this.selectedUploadFile = null;
-        this.existingFileName = null;
+        // 2. Reset biến ảnh
+        selectedUploadFile = null;
+        existingFileName = null;
+        imagePathLabel.setText(LanguageManager.getText("label.no_cover"));
 
-        // 3. Reset nhãn thông báo
-        imagePathLabel.setText(BackEnd.Utils.LanguageManager.getText("label.no_cover")); // "Chưa có ảnh bìa"
-
-        // 4. Reset selection trong bảng (nếu có)
+        // 3. QUAN TRỌNG: Bỏ chọn dòng trong bảng
         bookTable.getSelectionModel().clearSelection();
 
-        // 5. Đưa con trỏ chuột về ô ID để sẵn sàng quét cuốn tiếp theo
-        idField.requestFocus();
-    }
-    private TextField createTextField(String prompt) {
-        TextField field = new TextField();
-        field.setPromptText(prompt);
-        field.setPrefWidth(150);
-        return field;
+        // 4. Mở khóa ô ID (vì khi edit nó bị khóa)
+        idField.setEditable(true);
+
+        // 5. Focus lại
+        isbnField.requestFocus(); // Focus vào ô quét ISBN để sẵn sàng làm việc tiếp
     }
 
-    /**
-     * Tải lại dữ liệu từ DB và buộc cập nhật các thành phần UI.
-     */
     private void updateView() {
-        bookData.setAll(library.getBooks()); // Tải lại từ DB
-        bookTable.refresh(); // Buộc TableView phải hiển thị lại
-        galleryTab.updateBookGallery(); // Cập nhật Gallery
+        bookData.setAll(library.getBooks());
+        bookTable.refresh();
+        galleryTab.updateBookGallery();
     }
 
-    public VBox getPane() {
-        return this;
+    public VBox getPane() { return this; }
+    /**
+     * Thuật toán sinh ID tự động: B001, B002, ... B999
+     */
+    private String generateNextBookId() {
+        List<Book> books = library.getBooks();
+        int maxId = 0;
+
+        for (Book b : books) {
+            String id = b.getId();
+            // Chỉ xét các ID bắt đầu bằng "B" và theo sau là số (VD: B001)
+            if (id.matches("^B\\d+$")) {
+                try {
+                    // Cắt bỏ chữ "B", lấy phần số
+                    int numberPart = Integer.parseInt(id.substring(1));
+                    if (numberPart > maxId) {
+                        maxId = numberPart;
+                    }
+                } catch (NumberFormatException e) {
+                    // Bỏ qua nếu ID không đúng định dạng
+                }
+            }
+        }
+
+        // Sinh ID tiếp theo: B + (max + 1) được format 3 chữ số (001, 010...)
+        return String.format("B%03d", maxId + 1);
     }
 }

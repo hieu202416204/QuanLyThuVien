@@ -93,11 +93,11 @@ public class LibraryApp extends Application {
         this.primaryStage = stage;
         DatabaseManager.initializeDatabase();
         initializeData();
+        runAutoEmailCheck();
 
         // Gọi hàm vẽ giao diện lần đầu
         rebuildUI();
     }
-    // Trong LibraryApp.java
 
     private void runAutoEmailCheck() {
         Task<Void> emailTask = new Task<>() {
@@ -105,8 +105,19 @@ public class LibraryApp extends Application {
             protected Void call() throws Exception {
                 System.out.println("Đang kiểm tra sách quá hạn để gửi mail...");
 
-                List<String[]> overdueList = library.getTransactionDAO().getOverdueTransactionsWithEmail();
+// 1. LẤY CẤU HÌNH TỪ DB TRƯỚC
+                String maxDaysStr = library.getSettingsDAO().getSetting("max_borrow_days");
+                int maxDays = 60; // Mặc định nếu chưa cài đặt
+                try {
+                    if (maxDaysStr != null && !maxDaysStr.isEmpty()) {
+                        maxDays = Integer.parseInt(maxDaysStr);
+                    }
+                } catch (NumberFormatException e) {
+                    System.err.println("Lỗi đọc cấu hình ngày: " + e.getMessage());
+                }
 
+                // 2. TRUYỀN maxDays VÀO DAO
+                List<String[]> overdueList = library.getTransactionDAO().getOverdueTransactionsWithEmail(maxDays);
                 for (String[] record : overdueList) {
                     String email = record[0];
                     String userName = record[1];
@@ -149,13 +160,18 @@ public class LibraryApp extends Application {
         TabPane tabPane = new TabPane();
         tabPane.getStyleClass().add("hidden-header-tab-pane");
 
+
         // 4. Khởi tạo các Tab con
         homeTab = new HomeTab(library);
         bookGalleryTab = new BookGalleryTab(library, bookFlowPane, this::convertAndResize);
-
-        // --- TAB CÀI ĐẶT (Được chuyển vào đây) ---
-        // Logic quan trọng: Khi đổi ngôn ngữ, ta cần lưu trạng thái Dark Mode hiện tại
-        // từ Scene cũ trước khi vẽ lại Scene mới.
+// Thêm sự kiện: Khi chuyển sang tab "Trang chủ", tự động làm mới dữ liệu
+        Tab tabHome = new Tab(LanguageManager.getText("tab.home"), homeTab);
+        tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            if (newTab == tabHome && homeTab != null) {
+                homeTab.refreshData();
+            }
+        });
+        // Khi đổi ngôn ngữ, ta cần lưu trạng thái Dark Mode hiện tại
         Runnable onLanguageChangeCallback = () -> {
             // Cập nhật biến cờ nhớ trạng thái từ giao diện hiện tại
             this.isDarkMode = scene.getRoot().getStyleClass().contains("dark-mode");
@@ -171,7 +187,6 @@ public class LibraryApp extends Application {
         );
 
         // Tạo danh sách Tab với tên lấy từ file ngôn ngữ
-        Tab tabHome = new Tab(LanguageManager.getText("tab.home"), homeTab);
         Tab tabGallery = new Tab(LanguageManager.getText("tab.gallery"), bookGalleryTab);
         Tab tabBooks = new Tab(LanguageManager.getText("tab.manage_book"), new BookManagementTab(library, bookData, bookFlowPane, bookGalleryTab).getPane());
         Tab tabUsers = new Tab(LanguageManager.getText("tab.users"), createUserPane());
@@ -326,23 +341,16 @@ public class LibraryApp extends Application {
         userTable.getColumns().addAll(colId, colName, colEmail);
         userTable.setItems(userData);
 
-        // --- 2. Form Nhập liệu (CRUD) ---
-        TextField idField = new TextField();
-        idField.setPromptText(BackEnd.Utils.LanguageManager.getText("col.id"));
-        idField.setPrefWidth(100);
+        // --- 1. VÙNG NHẬP LIỆU (Input Form) ---
+        TextField idField = new TextField(); idField.setPromptText(LanguageManager.getText("col.id")); idField.setPrefWidth(120);
+        TextField nameField = new TextField(); nameField.setPromptText(LanguageManager.getText("col.name.user")); nameField.setPrefWidth(200);
+        TextField emailField = new TextField(); emailField.setPromptText(LanguageManager.getText("col.email")); emailField.setPrefWidth(200);
 
-        TextField nameField = new TextField();
-        nameField.setPromptText(BackEnd.Utils.LanguageManager.getText("field.name"));
-        nameField.setPrefWidth(150);
-
-        TextField emailField = new TextField();
-        emailField.setPromptText(BackEnd.Utils.LanguageManager.getText("field.email"));
-        emailField.setPrefWidth(200);
-
-        // Nút chọn Avatar (Giữ nguyên logic cũ nếu bạn đã thêm biến selectedUserAvatar)
-        Button btnAvatar = new Button(BackEnd.Utils.LanguageManager.getText("btn.photo"));
-        Label lblAvatarStatus = new Label(BackEnd.Utils.LanguageManager.getText("label.not_selected"));
-        lblAvatarStatus.setStyle("-fx-font-size: 10px;");
+        // Nút chọn ảnh nhỏ gọn hơn
+        Button btnAvatar = new Button("📷");
+        btnAvatar.setTooltip(new Tooltip(LanguageManager.getText("btn.photo")));
+        Label lblAvatarStatus = new Label(LanguageManager.getText("label.not_selected"));
+        lblAvatarStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #666;");
 
         btnAvatar.setOnAction(e -> {
             javafx.stage.FileChooser fc = new javafx.stage.FileChooser();
@@ -353,9 +361,18 @@ public class LibraryApp extends Application {
                 lblAvatarStatus.setText(BackEnd.Utils.LanguageManager.getText("label.selected"));
             }
         });
+        // Gom nhóm Input vào FlowPane
+        FlowPane inputPane = new FlowPane(15, 10);
+        inputPane.setPadding(new Insets(10));
+        inputPane.getStyleClass().add("input-panel");
+        inputPane.getChildren().addAll(
+                idField, nameField, emailField,
+                new HBox(5, btnAvatar, lblAvatarStatus)
+        );
 
         // Nút Thêm
-        Button addBtn = new Button(BackEnd.Utils.LanguageManager.getText("btn.add_user"));
+        Button addBtn = new Button(LanguageManager.getText("btn.add_user"));
+        addBtn.setStyle("-fx-base: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"); // Nổi bật nút Thêm
         addBtn.setOnAction(e -> {
             if (!idField.getText().isEmpty() && !nameField.getText().isEmpty()) {
                 String avatarFileName = null;
@@ -373,6 +390,10 @@ public class LibraryApp extends Application {
                     }
                 }
 
+                // Lấy thông tin từ giao diện
+                String uId = idField.getText().trim();
+                String uName = nameField.getText().trim();
+                String uEmail = emailField.getText().trim();
                 // Tạo User với tên file ảnh (chứ không phải đường dẫn tuyệt đối của file gốc)
                 User user = new User(idField.getText(), nameField.getText(), emailField.getText(), avatarFileName);
 
@@ -382,12 +403,27 @@ public class LibraryApp extends Application {
                     userData.setAll(library.getListUsers());
                     showAlert(Alert.AlertType.INFORMATION, BackEnd.Utils.LanguageManager.getText("msg.success"), BackEnd.Utils.LanguageManager.getText("msg.user_added"));
 
+                    // ============================================================
+                    // GỬI EMAIL CHÀO MỪNG (CHẠY NGẦM)
+                    // ============================================================
+                    if (!uEmail.isEmpty()) {
+                        new Thread(() -> {
+                            BackEnd.Utils.EmailService.sendWelcomeEmail(
+                                    library,  // Truyền đối tượng library để lấy cấu hình
+                                    uEmail,   // Email người nhận
+                                    uName,    // Tên
+                                    uId       // ID
+                            );
+                        }).start();
+                    }
+                    // ============================================================
+
                     // Reset form
                     idField.clear(); nameField.clear(); emailField.clear();
                     selectedUserAvatar = null;
                     lblAvatarStatus.setText(BackEnd.Utils.LanguageManager.getText("label.not_selected"));
                 } else {
-                    showAlert(Alert.AlertType.ERROR, "Lỗi", "Không thể thêm người dùng vào DB.");
+                    showAlert(Alert.AlertType.ERROR, "Lỗi", "Không thể thêm người dùng vào DB (Trùng ID?).");
                 }
             } else {
                 showAlert(Alert.AlertType.ERROR, BackEnd.Utils.LanguageManager.getText("msg.error"), BackEnd.Utils.LanguageManager.getText("msg.user_missing_info"));
@@ -395,9 +431,8 @@ public class LibraryApp extends Application {
         });
 
         // --- NÚT XÓA NGƯỜI DÙNG (CÓ MẬT KHẨU BẢO VỆ) ---
-        Button deleteBtn = new Button(BackEnd.Utils.LanguageManager.getText("btn.delete_user"));
-        deleteBtn.getStyleClass().add("button-delete"); // Style đỏ
-
+        Button deleteBtn = new Button(LanguageManager.getText("btn.delete_user"));
+        deleteBtn.getStyleClass().add("button-delete");
         deleteBtn.setOnAction(e -> {
             User selected = userTable.getSelectionModel().getSelectedItem();
             if (selected == null) {
@@ -490,11 +525,23 @@ public class LibraryApp extends Application {
                 }
             }
         });
+        Button editBtn = new Button("✏️ " + LanguageManager.getText("btn.edit"));
+        editBtn.getStyleClass().addAll("action-btn", "btn-blue"); // Dùng style chuẩn
+        editBtn.setDisable(true); // Mặc định tắt
+        editBtn.setOnAction(e -> handleEditUser(userTable, idField, nameField, emailField));
 
+        Button clearBtn = new Button("🔄 " + LanguageManager.getText("btn.refresh"));
+        clearBtn.getStyleClass().addAll("action-btn", "btn-warning"); // Màu vàng/cam cho nút hủy
+        clearBtn.setOnAction(e -> clearUserFields(userTable, idField, nameField, emailField)); // Gán action
         // Listener cho bảng
         userTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             viewUserHistoryBtn.setDisable(newSelection == null);
         });
+        // HBox chứa nút
+        HBox actionBar = new HBox(15);
+        actionBar.setAlignment(Pos.CENTER_LEFT);
+        actionBar.setPadding(new Insets(5, 0, 10, 0));
+        actionBar.getChildren().addAll(addBtn,editBtn, deleteBtn,clearBtn, new Separator(javafx.geometry.Orientation.VERTICAL), viewUserHistoryBtn, btnCreateCard);
 
         // --- 3. Khu vực Tìm kiếm ---
         TextField searchUserField = new TextField();
@@ -513,24 +560,44 @@ public class LibraryApp extends Application {
             searchUserField.clear();
             userTable.getSelectionModel().clearSelection();
         });
+        HBox searchBar = new HBox(10);
+        searchBar.setAlignment(Pos.CENTER_LEFT);
+        searchBar.getStyleClass().add("input-panel");
+        searchBar.getChildren().addAll(searchUserField, searchIdBtn, searchNameBtn, clearSearchBtn);
 
-        // LAYOUT
-        HBox searchControls = new HBox(10, searchUserField, searchIdBtn, searchNameBtn, clearSearchBtn);
-        searchControls.setPadding(new Insets(10, 0, 10, 0));
-        searchControls.setAlignment(Pos.CENTER_LEFT);
+        // --- TỔNG HỢP LAYOUT ---
+        VBox layout = new VBox(10);
+        layout.setPadding(new Insets(15));
 
-        HBox crudControls = new HBox(10, idField, nameField, emailField, btnAvatar, lblAvatarStatus, addBtn);
-        crudControls.setPadding(new Insets(10, 0, 0, 0));
-        crudControls.setAlignment(Pos.CENTER_LEFT);
 
-        HBox actionControls = new HBox(10, deleteBtn, viewUserHistoryBtn, btnCreateCard);
-        actionControls.setPadding(new Insets(10, 0, 0, 0));
-        actionControls.setAlignment(Pos.CENTER_LEFT);
+        layout.getChildren().addAll(searchBar, userTable, inputPane, actionBar);
 
-        VBox pane = new VBox(10, searchControls, userTable, crudControls, actionControls);
-        pane.setPadding(new Insets(10));
+        userTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+            // userTable.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> {
+            boolean hasSel = newSelection != null;
 
-        return pane;
+            editBtn.setDisable(!hasSel);
+            deleteBtn.setDisable(!hasSel);
+            addBtn.setDisable(hasSel); // Tắt nút Thêm khi đang ở chế độ Sửa/Xem
+
+            if (newSelection != null) {
+                // 1. Đổ dữ liệu
+                idField.setText(newSelection.getId());
+                nameField.setText(newSelection.getName());
+                emailField.setText(newSelection.getEmail());
+                // Lấy avatarPath cũ để xử lý sau này
+                // this.existingAvatarPath = newSelection.getAvatarPath();
+
+                // 2. Khóa ID (KHÔNG CHO SỬA PRIMARY KEY)
+                idField.setEditable(false);
+            } else {
+                // Xóa nội dung khi không chọn ai
+                // clearUserFields(); // Giả sử bạn có hàm dọn dẹp này
+                idField.clear(); nameField.clear(); emailField.clear();
+                idField.setEditable(true);
+            }
+        });
+        return layout;
     }
     // === XỬ LÝ TÌM KIẾM THEO ID (Đã cập nhật ngôn ngữ) ===
     private void handleSearchUserById(String userId) {
@@ -722,51 +789,45 @@ public class LibraryApp extends Application {
             return new SimpleStringProperty(days + " " + BackEnd.Utils.LanguageManager.getText("text.days"));
         });
 
+        // --- 1. LẤY CẤU HÌNH RA NGOÀI (Chỉ đọc DB 1 lần duy nhất) ---
+        String maxDaysStr = library.getSettingsDAO().getSetting("max_borrow_days");
+        final int maxDaysConfig = maxDaysStr.isEmpty() ? 60 : Integer.parseInt(maxDaysStr);
+        final int warningThresholdConfig = Math.max(1, maxDaysConfig - 10);
+
+        // --- 2. THIẾT LẬP CELL FACTORY ---
         colStatus.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
+                setText(null);
+                setStyle("");
+
                 if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
+                    return;
+                }
+
+                // Lấy dữ liệu dòng hiện tại
+                BackEnd.Histories.CurrentTransaction trans = getTableView().getItems().get(getIndex());
+                long days = trans.getDaysElapsed();
+                String daysText = item;
+
+                // DÙNG BIẾN ĐÃ LẤY Ở NGOÀI (maxDaysConfig) -> KHÔNG ĐỌC DB NỮA
+                if (days > maxDaysConfig) {
+                    setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                    setText(daysText + " " + BackEnd.Utils.LanguageManager.getText("status.overdue"));
+                } else if (days >= warningThresholdConfig) {
+                    setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold;");
+                    setText(daysText + " " + BackEnd.Utils.LanguageManager.getText("status.near_due"));
                 } else {
-                    // 1. LẤY CẤU HÌNH TỪ DB (Để đồng bộ với Settings)
-                    String maxDaysStr = library.getSettingsDAO().getSetting("max_borrow_days");
-                    int maxDays = maxDaysStr.isEmpty() ? 60 : Integer.parseInt(maxDaysStr);
-
-                    // Tự định nghĩa mức cảnh báo (ví dụ: cảnh báo trước 10% thời hạn hoặc trước 10 ngày)
-                    // Ở đây để là cảnh báo trước 10 ngày
-                    int warningThreshold = Math.max(1, maxDays - 10);
-
-                    // 2. Lấy dữ liệu dòng hiện tại
-                    BackEnd.Histories.CurrentTransaction trans = getTableView().getItems().get(getIndex());
-                    long days = trans.getDaysElapsed();
-
-                    String daysText = item; // Chuỗi "5 ngày"
-
-                    // 3. SO SÁNH VỚI BIẾN ĐỘNG (maxDays)
-                    if (days > maxDays) {
-                        // QUÁ HẠN (Đỏ)
-                        setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-                        setText(daysText + " " + BackEnd.Utils.LanguageManager.getText("status.overdue"));
-                    }
-                    else if (days >= warningThreshold) {
-                        // SẮP HẾT HẠN (Cam)
-                        setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold;");
-                        setText(daysText + " " + BackEnd.Utils.LanguageManager.getText("status.near_due"));
-                    }
-                    else {
-                        // BÌNH THƯỜNG (Xanh)
-                        setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
-                        setText(daysText + " " + BackEnd.Utils.LanguageManager.getText("status.borrowing"));
-                    }
+                    setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+                    setText(daysText + " " + BackEnd.Utils.LanguageManager.getText("status.borrowing"));
                 }
             }
         });
         borrowedTable.getColumns().addAll(colUser, colBook, colStatus);
         refreshBorrowedTable();
 
-        // 3. NÚT MƯỢN / TRẢ (ĐÃ SỬA LOGIC RESET)
+        // 3. NÚT MƯỢN / TRẢ
         Button borrowBtn = new Button(BackEnd.Utils.LanguageManager.getText("btn.action_borrow"));
         borrowBtn.setMaxWidth(Double.MAX_VALUE);
         borrowBtn.setOnAction(e -> {
@@ -811,7 +872,18 @@ public class LibraryApp extends Application {
                 confirmAlert.setHeaderText(null);
                 confirmAlert.setContentText(String.format(BackEnd.Utils.LanguageManager.getText("msg.fine_content"), fineStr));
 
-                if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+                // Nếu người dùng bấm OK (Đồng ý nộp phạt)
+                if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+
+                    // --- [MỚI] GHI NHẬN DOANH THU VÀO DB ---
+                    String description = "Phạt quá hạn: User " + uId + " - Sách " + bId;
+                    library.getFinancialDAO().recordFine(description, fine);
+                    System.out.println("Đã ghi nhận doanh thu: " + fineStr);
+                    // ---------------------------------------
+
+                } else {
+                    return; // Nếu bấm Cancel thì dừng, không trả sách
+                }
             }
 
             String message = quanLyMuonTra.traSach(uId, bId);
@@ -837,14 +909,14 @@ public class LibraryApp extends Application {
             }
         });
 
-        // 4. SẮP XẾP LAYOUT (ĐÂY LÀ PHẦN QUAN TRỌNG BẠN ĐANG THIẾU)
+        // 4. SẮP XẾP LAYOUT
         inputSection.getChildren().addAll(
                 titleLabel,
                 scanBox,
                 new Separator(),
                 new Label(BackEnd.Utils.LanguageManager.getText("label.manual_info")), // "Thông tin thủ công:"
-                userIdField,   // <--- THÊM Ô USER ID VÀO ĐÂY
-                bookIdField,   // <--- THÊM Ô BOOK ID VÀO ĐÂY
+                userIdField,
+                bookIdField,
                 new Separator(),
                 borrowBtn, returnBtn
         );
@@ -854,7 +926,8 @@ public class LibraryApp extends Application {
         HBox.setHgrow(borrowedTable, Priority.ALWAYS);
 
         return mainLayout;
-    }   // ============================== login nút mượn/ trả khi muốn reset tất cả khi mượn hoặc trả =====================================
+    }
+    // ============================== login nút mượn/ trả khi muốn reset tất cả khi mượn hoặc trả =====================================
 //        Button borrowBtn = new Button(BackEnd.Utils.LanguageManager.getText("btn.action_borrow"));
 //        borrowBtn.setMaxWidth(Double.MAX_VALUE);
 //        borrowBtn.setOnAction(e -> {
@@ -1304,6 +1377,65 @@ public class LibraryApp extends Application {
             }
         }
     }
+    private void handleEditUser(TableView<User> userTable, TextField idField, TextField nameField, TextField emailField) {
+        User selectedUser = userTable.getSelectionModel().getSelectedItem();
+
+        if (selectedUser == null) return; // Không có gì để sửa
+
+        // ---  KIỂM TRA AN TOÀN (DEFENSIVE PROGRAMMING) ---
+        // Sử dụng String.valueOf() để đảm bảo getText() không bao giờ là null
+        String newName = (nameField != null) ? String.valueOf(nameField.getText()).trim() : "";
+        String newEmail = (emailField != null) ? String.valueOf(emailField.getText()).trim() : "";
+
+        if (newName.isEmpty()) {
+            LibraryApp.showAlert(Alert.AlertType.WARNING, LanguageManager.getText("msg.error"), "Tên người dùng không được để trống.");
+            return;
+        }
+
+        // 2. Cập nhật thuộc tính của đối tượng User đã chọn
+        selectedUser.setName(newName);
+        selectedUser.setEmail(newEmail);
+
+        // 3. Xử lý cập nhật Avatar (Nếu có logic chọn ảnh mới)
+        //selectedUser.setAvatarPath(handleUpdateAvatar());
+
+        // 4. Gọi DAO để cập nhật DB
+        boolean success = library.getUserDAO().updateUser(selectedUser);
+
+        if (success) {
+            // 5. Cập nhật UI
+            userTable.refresh();
+            userTable.getSelectionModel().clearSelection();
+            idField.setEditable(true); // Mở khóa ID
+
+            LibraryApp.showAlert(Alert.AlertType.INFORMATION, LanguageManager.getText("msg.success"), "Cập nhật thông tin người dùng thành công.");
+        } else {
+            LibraryApp.showAlert(Alert.AlertType.ERROR, LanguageManager.getText("msg.error"), "Lỗi: Không thể cập nhật thông tin người dùng.");
+        }
+    }
+    /**
+     * Hàm làm sạch các trường nhập liệu và reset bảng về trạng thái Thêm mới
+     */
+    private void clearUserFields(
+            TableView<User> userTable,
+            TextField idField,
+            TextField nameField,
+            TextField emailField) {
+
+        // 1. Xóa nội dung trong các ô nhập
+        idField.clear();
+        nameField.clear();
+        emailField.clear();
+
+        // 2. Mở khóa ô ID để có thể nhập ID mới
+        idField.setEditable(true);
+
+        // 3. Bỏ chọn dòng trong bảng (thoát chế độ Sửa)
+        userTable.getSelectionModel().clearSelection();
+
+        // 4. Đảm bảo các nút trở lại trạng thái ban đầu (nếu bạn có logic bật/tắt nút)
+
+    }
     /**
      * Hàm tiện ích để làm mới toàn bộ dữ liệu hiển thị
      * Hàm này PHẢI được gọi trong Platform.runLater() nếu đang ở luồng phụ
@@ -1327,7 +1459,7 @@ public class LibraryApp extends Application {
     private void initializeData() {
         if (library.getListUsers().isEmpty() && library.getBooks().isEmpty()) {
             System.out.println("-> Khởi tạo dữ liệu giả lần đầu.");
-            library.addBook(new Book("B001", "Dune", "Frank Herbert", "1965"));
+            library.addBook(new Book("B001", "Dune", "Frank Herbert", "1965", "images/img_2bcef25c-d9d1-461d-8427-cc2e48e475f0.png"));
             library.addBook(new Book("B002", "1984", "George Orwell", "1949"));
             library.addUser(new User("U001", "Nguyễn Văn Hiếu"));
             library.addUser(new User("U002", "Trần Thị Quỳnh"));

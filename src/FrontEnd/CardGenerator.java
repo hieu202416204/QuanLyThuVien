@@ -195,4 +195,49 @@ public class CardGenerator {
             System.err.println("Lỗi xuất PDF: " + e.getMessage());
         }
     }
+    /**
+     * Xuất Mã vạch quản lý sách ra PDF (Để in tem dán gáy sách)
+     */
+    public static void saveBookBarcodeToPDF(BackEnd.Book.Book book, File outputFile) {
+        try {
+            // 1. Tạo PDF khổ nhỏ (Ví dụ khổ tem nhãn: 10cm x 5cm)
+            // Hoặc dùng A4 rồi vẽ góc trên cùng. Ở đây dùng A6 cho nhỏ gọn.
+            Document document = new Document(PageSize.A6);
+            PdfWriter.getInstance(document, new FileOutputStream(outputFile));
+            document.open();
+
+            // 2. Tạo hình ảnh Barcode từ ID sách
+            // Dùng BarcodeHelper để tạo ảnh JavaFX -> Chuyển sang BufferedImage -> Chuyển sang PDF Image
+            javafx.scene.image.WritableImage fxImage = BarcodeHelper.createBarcode(book.getId(), 400, 100);
+
+            ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(SwingFXUtils.fromFXImage(fxImage, null), "png", byteOutput);
+            Image pdfBarcode = Image.getInstance(byteOutput.toByteArray());
+
+            // Căn giữa
+            pdfBarcode.setAlignment(Image.ALIGN_CENTER);
+            pdfBarcode.scalePercent(50); // Thu nhỏ lại chút cho vừa tem
+
+            // 3. Thêm thông tin văn bản (Tên sách, ID)
+            com.lowagie.text.Font fontTitle = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 10, com.lowagie.text.Font.BOLD);
+            com.lowagie.text.Font fontId = new com.lowagie.text.Font(com.lowagie.text.Font.COURIER, 14, com.lowagie.text.Font.BOLD);
+
+            com.lowagie.text.Paragraph pTitle = new com.lowagie.text.Paragraph(book.getName(), fontTitle);
+            pTitle.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+
+            com.lowagie.text.Paragraph pId = new com.lowagie.text.Paragraph(book.getId(), fontId);
+            pId.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+
+            // 4. Ghi vào PDF
+            document.add(pTitle);
+            document.add(pdfBarcode); // Mã vạch
+            document.add(pId);        // ID dưới mã vạch
+
+            document.close();
+            System.out.println("Đã lưu Barcode sách: " + outputFile.getAbsolutePath());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

@@ -200,4 +200,25 @@ public class UserDAO {
         }
         return stats;
     }
+    /**
+     * Cập nhật thông tin User (không cho sửa ID)
+     */
+    public boolean updateUser(User user) {
+        String sql = "UPDATE users SET name = ?, email = ?, avatarPath = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, user.getName());
+            pstmt.setString(2, user.getEmail());
+            pstmt.setString(3, user.getAvatarPath());
+            pstmt.setString(4, user.getId()); // WHERE ID
+
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Lỗi cập nhật user: " + e.getMessage());
+            return false;
+        }
+    }
 }

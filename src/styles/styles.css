@@ -533,3 +533,178 @@
 .dark-mode .scan-status-error {
     -fx-text-fill: #e74c3c; /* Đỏ sáng neon */
 }
+/* =========================================================
+   --- MODERN INPUT FIELDS (Ô NHẬP LIỆU HIỆN ĐẠI) ---
+   ========================================================= */
+
+/* 1. Style chung cho ô nhập liệu (Mặc định - Sáng) */
+.modern-textfield {
+    -fx-background-color: white;
+    -fx-border-color: #bdc3c7;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-padding: 6px;
+    -fx-font-size: 13px;
+    -fx-text-fill: #333333; /* Chữ đen */
+}
+
+/* Hiệu ứng khi bấm vào (Focus) */
+.modern-textfield:focused {
+    -fx-border-color: #3498db; /* Viền xanh dương */
+    -fx-effect: dropshadow(gaussian, rgba(52, 152, 219, 0.4), 5, 0, 0, 1);
+}
+
+/* 2. Style cho Nhãn (Label) đi kèm */
+.input-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #555555; /* Xám đậm */
+    -fx-font-size: 12px;
+}
+
+/* ---------------------------------------------------------
+   --- DARK MODE OVERRIDES (CHẾ ĐỘ TỐI) ---
+   --------------------------------------------------------- */
+
+/* Ô nhập liệu trong nền tối */
+.dark-mode .modern-textfield {
+    -fx-background-color: #34495e; /* Nền xám xanh tối */
+    -fx-border-color: #555555;     /* Viền xám tối */
+    -fx-text-fill: #ecf0f1;        /* Chữ trắng sáng */
+    -fx-prompt-text-fill: #95a5a6; /* Chữ gợi ý mờ hơn */
+}
+
+.dark-mode .modern-textfield:focused {
+    -fx-border-color: #5dade2;     /* Viền xanh sáng hơn */
+    -fx-effect: dropshadow(gaussian, rgba(93, 173, 226, 0.4), 5, 0, 0, 1);
+}
+
+/* Nhãn trong nền tối */
+.dark-mode .input-label {
+    -fx-text-fill: #bdc3c7; /* Chữ xám sáng */
+}
+/* =========================================================
+   --- INPUT PANEL (KHUNG NHẬP LIỆU) ---
+   ========================================================= */
+
+/* 1. Giao diện Sáng (Mặc định) */
+.input-panel {
+    -fx-background-color: #f8f9fa; /* Màu xám rất nhạt */
+    -fx-background-radius: 5;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 5;
+    /* -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 5, 0, 0, 1); (Tùy chọn: Thêm bóng nhẹ) */
+}
+
+/* 2. Giao diện Tối (Dark Mode Overrides) */
+.dark-mode .input-panel {
+    -fx-background-color: #34495e; /* Nền xám xanh tối (Tiệp màu với giao diện) */
+    -fx-border-color: #444444;     /* Viền tối hơn */
+}
+/* =========================================================
+   --- DASHBOARD & WIDGETS ---
+   ========================================================= */
+
+/* 1. Thẻ Widget (Dùng chung cho Số liệu và Biểu đồ) */
+.dashboard-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12px;
+    -fx-border-radius: 12px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 10, 0, 0, 4);
+    -fx-padding: 20px;
+}
+
+/* Icon trong thẻ số liệu */
+.card-icon {
+    -fx-font-size: 30px;
+    -fx-font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif; /* Hỗ trợ Emoji */
+}
+
+/* Số liệu to */
+.card-number {
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #2d3436;
+}
+
+/* Tiêu đề thẻ */
+.card-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #636e72;
+    -fx-opacity: 0.8;
+}
+
+/* Màu sắc đường viền trang trí bên trái thẻ */
+.card-decoration-blue   { -fx-border-color: transparent transparent transparent #0984e3; -fx-border-width: 0 0 0 4; }
+.card-decoration-green  { -fx-border-color: transparent transparent transparent #00b894; -fx-border-width: 0 0 0 4; }
+.card-decoration-orange { -fx-border-color: transparent transparent transparent #e17055; -fx-border-width: 0 0 0 4; }
+.card-decoration-red    { -fx-border-color: transparent transparent transparent #d63031; -fx-border-width: 0 0 0 4; }
+.card-decoration-purple { -fx-border-color: transparent transparent transparent #9b59b6; -fx-border-width: 0 0 0 4; }
+
+
+/* =========================================================
+   --- CHART STYLING (TỐI ƯU BIỂU ĐỒ) ---
+   ========================================================= */
+
+/* Nền biểu đồ trong suốt để ăn theo nền Card */
+.chart {
+    -fx-padding: 10px;
+    -fx-background-color: transparent;
+}
+.chart-content {
+    -fx-padding: 10px;
+}
+
+/* Màu chữ mặc định (Sáng) */
+.chart-title {
+    -fx-text-fill: #2d3436;
+    -fx-font-size: 1.2em;
+    -fx-font-weight: bold;
+}
+.axis-label {
+    -fx-text-fill: #636e72;
+}
+.axis {
+    -fx-tick-label-fill: #636e72;
+}
+.chart-legend-item {
+    -fx-text-fill: #2d3436;
+}
+
+
+/* =========================================================
+   --- DARK MODE DASHBOARD ---
+   ========================================================= */
+
+.dark-mode .dashboard-card {
+    -fx-background-color: #2f3640; /* Nền card tối */
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 4);
+}
+
+.dark-mode .card-number {
+    -fx-text-fill: #f5f6fa;
+}
+
+.dark-mode .card-title {
+    -fx-text-fill: #bdc3c7;
+}
+
+/* Màu biểu đồ trong chế độ tối (RẤT QUAN TRỌNG) */
+.dark-mode .chart-title {
+    -fx-text-fill: #f5f6fa;
+}
+.dark-mode .axis-label {
+    -fx-text-fill: #bdc3c7;
+}
+.dark-mode .axis {
+    -fx-tick-label-fill: #bdc3c7;
+}
+.dark-mode .chart-legend {
+    -fx-background-color: transparent;
+}
+.dark-mode .chart-legend-item {
+    -fx-text-fill: #f5f6fa;
+}
+.dark-mode .chart-plot-background {
+    -fx-background-color: transparent;
+}

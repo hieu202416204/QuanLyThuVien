@@ -1,6 +1,7 @@
 package Database;
 
 import BackEnd.Histories.UserInUserHistory;
+import BackEnd.LibraryQ.Library;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -339,10 +340,10 @@ public class TransactionDAO {
         return list;
     }
     // Lấy danh sách giao dịch quá hạn có kèm Email người dùng
-    public List<String[]> getOverdueTransactionsWithEmail() {
+    public List<String[]> getOverdueTransactionsWithEmail(int limitDay) {
         List<String[]> list = new ArrayList<>();
         //===============================================================
-        // quá hạn là 60 ngày
+        // quá hạn giả sử 60 ngày
         String sql = "SELECT u.name, u.email, b.name as book_name, t.borrow_date " +
                 "FROM transactions t " +
                 "JOIN users u ON t.user_id = u.id " +
@@ -357,7 +358,7 @@ public class TransactionDAO {
                 LocalDateTime borrowTime = normalizeDateTime(rs.getString("borrow_date"));
                 long days = java.time.temporal.ChronoUnit.DAYS.between(borrowTime, LocalDateTime.now());
 //========================================================================
-                if (days > 60) { // Nếu quá 60 ngày
+                if (days > limitDay) { // Nếu quá 60 ngày
                     list.add(new String[]{
                             rs.getString("email"),
                             rs.getString("name"),
