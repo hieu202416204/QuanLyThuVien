@@ -1,129 +1,114 @@
 package BackEnd.Utils;
 
 import BackEnd.LibraryQ.Library;
+
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 public class EmailService {
 
-    // Không còn SENDER_EMAIL và APP_PASSWORD tĩnh nữa
+    // Regex kiểm tra email
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
+
+    public static boolean isValidEmail(String email) {
+        if (email == null) return false;
+        return EMAIL_PATTERN.matcher(email).matches();
+    }
 
     /**
-     * Gửi email thông báo (Cần truyền Library để truy cập DB)
+     * Hàm gửi email chung (Generic)
+     * Tối ưu: Chỉ tập trung vào việc gửi, tách biệt việc cấu hình.
      */
-    public static boolean sendOverdueNotification(Library library, String recipientEmail, String userName, String bookName, long daysOverdue) {
-
-        // 1. Lấy cấu hình từ DB
-        String senderEmail = library.getSettingsDAO().getSetting("admin_email");
-        String appPassword = library.getSettingsDAO().getSetting("app_password");
-
-        // Kiểm tra xem đã cấu hình chưa
-        if (senderEmail.isEmpty() || appPassword.isEmpty()) {
-            System.err.println("Chưa cấu hình Email trong phần Cài đặt!");
-            return false;
-        }
-
-        // 2. Cấu hình Server (Giữ nguyên)
+    public static boolean sendEmail(String toEmail, String subject, String body, String fromEmail, String password) {
+        // 1. Cấu hình SMTP Server (Gmail)
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.host", "smtp.gmail.com");
         props.put("mail.smtp.port", "587");
 
+        // 2. Tạo phiên làm việc (Session)
         Session session = Session.getInstance(props, new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(senderEmail, appPassword); // Dùng biến động
+                return new PasswordAuthentication(fromEmail, password);
             }
         });
 
         try {
+            // 3. Tạo nội dung thư
             Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(senderEmail));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
-            message.setSubject("⚠️ THÔNG BÁO QUÁ HẠN: Thư viện"); // Có thể thêm tên thư viện từ DB sau này
+            message.setFrom(new InternetAddress(fromEmail));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            message.setSubject(subject);
+            message.setText(body);
 
-            String content = "Xin chào " + userName + ",\n\n"
-                    + "Hệ thống ghi nhận bạn đang mượn cuốn sách: " + bookName + "\n"
-                    + "Tình trạng: QUÁ HẠN " + daysOverdue + " ngày.\n\n"
-                    + "Vui lòng mang sách đến trả tại thư viện sớm nhất.\n\n"
-                    + "Trân trọng.";
-
-            message.setText(content);
+            // 4. Gửi
             Transport.send(message);
-            System.out.println("-> Đã gửi mail cho: " + recipientEmail);
+            // In thông báo thành công (Có thể dùng LanguageManager ở đây nếu muốn log ra UI)
+            System.out.println(String.format("Email sent to: %s", toEmail));
             return true;
 
         } catch (MessagingException e) {
-            System.err.println("Lỗi gửi mail: " + e.getMessage());
+            System.err.println("Lỗi gửi email: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
+
     /**
-     * Gửi email chào mừng khi tạo tài khoản thành công.
+     * Gửi email thông báo quá hạn (Đã tối ưu: Gọi lại sendEmail)
+     */
+    public static boolean sendOverdueNotification(Library library, String recipientEmail, String userName, String bookName, long daysOverdue) {
+        // 1. Lấy cấu hình
+        String senderEmail = library.getSettingsDAO().getSetting("admin_email");
+        String appPassword = library.getSettingsDAO().getSetting("app_password");
+
+        if (senderEmail.isEmpty() || appPassword.isEmpty()) {
+            System.err.println(LanguageManager.getText("mail.error.config"));
+            return false;
+        }
+
+        // 2. Lấy nội dung từ Từ điển (Đa ngôn ngữ)
+        String subject = LanguageManager.getText("mail.overdue.subject");
+
+        // Format nội dung với các tham số: Tên user, Tên sách, Số ngày
+        String bodyTemplate = LanguageManager.getText("mail.overdue.body");
+        String body = String.format(bodyTemplate, userName, bookName, daysOverdue);
+
+        // 3. Gọi hàm gửi chung
+        return sendEmail(recipientEmail, subject, body, senderEmail, appPassword);
+    }
+
+    /**
+     * Gửi email chào mừng (Đã tối ưu: Gọi lại sendEmail)
      */
     public static void sendWelcomeEmail(Library library, String recipientEmail, String userName, String userId) {
         // 1. Kiểm tra đầu vào
         if (recipientEmail == null || recipientEmail.trim().isEmpty()) {
-            System.out.println("-> Không gửi email chào mừng: Không có địa chỉ email.");
-            return; // Không làm gì nếu không có email
+            return;
         }
 
-        // 2. Lấy cấu hình (Giống hàm sendOverdueNotification)
+        // 2. Lấy cấu hình
         String senderEmail = library.getSettingsDAO().getSetting("admin_email");
         String appPassword = library.getSettingsDAO().getSetting("app_password");
 
         if (senderEmail.isEmpty() || appPassword.isEmpty()) {
-            System.err.println("-> Chưa cấu hình Email Admin, bỏ qua gửi mail chào mừng.");
+            System.err.println(LanguageManager.getText("mail.error.config"));
             return;
         }
 
-        // 3. Cấu hình Server
-        Properties props = new Properties();
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", "smtp.gmail.com");
-        props.put("mail.smtp.port", "587");
+        // 3. Lấy nội dung từ Từ điển
+        String subject = LanguageManager.getText("mail.welcome.subject");
 
-        Session session = Session.getInstance(props, new Authenticator() {
-            @Override
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(senderEmail, appPassword);
-            }
-        });
+        // Format nội dung: Tên user, Tên user (lần 2), ID, Email
+        String bodyTemplate = LanguageManager.getText("mail.welcome.body");
+        String body = String.format(bodyTemplate, userName, userName, userId, recipientEmail);
 
-        // 4. Soạn và Gửi
-        try {
-            Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(senderEmail));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
-
-            // Tiêu đề Email
-            message.setSubject("🎉 Chào mừng bạn đến với Thư viện!");
-
-            // Nội dung Email
-            String content = "Xin chào " + userName + ",\n\n"
-                    + "Chúc mừng! Tài khoản thư viện của bạn đã được tạo thành công.\n"
-                    + "Dưới đây là thông tin thành viên của bạn:\n\n"
-                    + "--------------------------------\n"
-                    + "📛 Tên thành viên: " + userName + "\n"
-                    + "🆔 Mã thành viên (ID): " + userId + "\n"
-                    + "📧 Email đăng ký: " + recipientEmail + "\n"
-                    + "--------------------------------\n\n"
-                    + "Bạn có thể sử dụng Mã thành viên này để mượn sách tại thư viện.\n"
-                    + "Xin cảm ơn và chúc bạn có những trải nghiệm đọc sách tuyệt vời!\n\n"
-                    + "Trân trọng,\n"
-                    + "Ban quản lý Thư viện.";
-
-            message.setText(content);
-
-            Transport.send(message);
-            System.out.println("✅ Đã gửi email chào mừng tới: " + recipientEmail);
-
-        } catch (MessagingException e) {
-            System.err.println("❌ Lỗi gửi mail chào mừng: " + e.getMessage());
-        }
+        // 4. Gọi hàm gửi chung
+        sendEmail(recipientEmail, subject, body, senderEmail, appPassword);
     }
 }

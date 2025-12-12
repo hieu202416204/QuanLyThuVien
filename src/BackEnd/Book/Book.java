@@ -11,6 +11,7 @@ public class Book {
     private boolean status = true;
     private String imagePath; // Đường dẫn ảnh bìa
     private int soLuotMuon = 0;
+    private String category;
     public Book(){}
     public Book(String id, String name, String author,
                 String year){
@@ -18,14 +19,23 @@ public class Book {
         this.author = author;
         this.name = name;
         this.year =  year;
+    }    public Book(String id, String name, String author,
+                     String year, String category){
+        this.id = id;
+        this.author = author;
+        this.name = name;
+        this.year =  year;
+        this.category = "General";
     }
+
     public Book(String id, String name, String author,
-                String year, String imagePath){
+                String year, String imagePath, String category){
         this.id = id;
         this.author = author;
         this.name = name;
         this.year =  year;
         this.imagePath = imagePath;
+        this.category = "General";
     }
     // getter vaf setter cho imagePath
 
@@ -88,6 +98,14 @@ public class Book {
     }
     public void setSoLuotMuonFromDB(int count) {
         this.soLuotMuon = count;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public boolean isStatus() {

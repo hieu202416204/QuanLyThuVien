@@ -15,7 +15,7 @@ import java.sql.Statement;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class SystemStressTest {
 
-    private static final int BULK_SIZE = 5000; // Thử nghiệm với 5.000 bản ghi
+    private static final int BULK_SIZE = 50000; // Thử nghiệm với 5.000 bản ghi
     private BookDAO bookDAO = new BookDAO();
     private UserDAO userDAO = new UserDAO();
     private TransactionDAO transDAO = new TransactionDAO();

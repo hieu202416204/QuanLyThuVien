@@ -22,6 +22,7 @@ public class DatabaseManager {
                     + "name TEXT NOT NULL,"
                     + "author TEXT,"
                     + "year TEXT,"
+                    +"category TEXT,"
                     + "status INTEGER NOT NULL," // 1 (true) là Available, 0 (false) là Borrowed
                     + "imagePath TEXT,"
                     + "soLuotMuon INTEGER DEFAULT 0"
@@ -57,11 +58,41 @@ public class DatabaseManager {
                     + "value TEXT"
                     + ");";
             stmt.execute(sqlSettings);
+// --- 5. TỐI ƯU HÓA: TẠO INDEX ---
+            // Phần này giúp tìm kiếm NHANH GẤP NHIỀU LẦN
 
-            System.out.println("Database initialized successfully.");
+            // Index cho tìm kiếm sách theo Tên
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_books_name ON books(name)");
+
+            // Index cho tìm kiếm sách theo Tác giả
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_books_author ON books(author)");
+
+            // Index cho tìm kiếm người dùng theo Tên
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_users_name ON users(name)");
+
+            // Index cho trạng thái giao dịch (để lọc sách đang mượn nhanh hơn)
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_trans_status ON transactions(status)");
+
+            // Index cho khóa ngoại (tăng tốc độ Join bảng khi xem lịch sử)
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_trans_userid ON transactions(user_id)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_trans_bookid ON transactions(book_id)");
+// 6. TẠO BẢNG VISIT_LOGS (Lịch sử ra vào)
+// Lưu từng lượt quét để sau này tính toán thống kê chi tiết
+            String sqlVisits = "CREATE TABLE IF NOT EXISTS visit_logs ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + "user_id TEXT NOT NULL,"
+                    + "visit_time TEXT," // Lưu yyyy-MM-dd HH:mm:ss
+                    + "FOREIGN KEY(user_id) REFERENCES users(id)"
+                    + ");";
+            stmt.execute(sqlVisits);
+
+// Tạo Index cho ngày để truy vấn thống kê nhanh
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_visit_time ON visit_logs(visit_time)");
+            System.out.println("Database initialized successfully with Indexes.");
 
         } catch (SQLException e) {
             System.err.println("Lỗi khi kết nối hoặc khởi tạo DB: " + e.getMessage());
+
             e.printStackTrace();
         }
     }

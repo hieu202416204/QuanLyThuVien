@@ -27,9 +27,10 @@ public class Library {
     // PHƯƠNG THỨC TRUY CẬP SÁCH (Book CRUD)
     // ----------------------------------------------------------------------
 
-    public void addBook(Book book) {
-        bookDAO.addBook(book);
+    public boolean addBook(Book book) {
+        return bookDAO.addBook(book);
     }
+
 
     public boolean deleteBook(String id) {
         return bookDAO.deleteBook(id);

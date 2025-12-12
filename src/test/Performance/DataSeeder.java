@@ -7,7 +7,7 @@ import Database.UserDAO;
 public class DataSeeder {
 
     // Số lượng bản ghi muốn bơm vào (Thử với 10.000, rồi tăng lên 50.000)
-    private static final int NUM_RECORDS = 20000;
+    private static final int NUM_RECORDS = 500000;
 
     public static void main(String[] args) {
         DatabaseManager.initializeDatabase();

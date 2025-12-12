@@ -2,15 +2,19 @@ package FrontEnd;
 
 import BackEnd.LibraryQ.Library;
 import BackEnd.Utils.LanguageManager;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
-public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh bị che khi màn hình nhỏ
+import static FrontEnd.LibraryApp.ADMIN_PASSWORD;
 
+public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh bị che khi màn hình nhỏ
     // Rules Controls
     private TextField maxDaysField;
     private TextField fineAmountField;
@@ -23,6 +27,9 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
     private TextField emailField;
     private PasswordField passField;
     private CheckBox autoAddCheckBox;
+    //========================= khai bao email nha phat trien ==========================
+    private static final String DEVELOPER_SUPPORT_EMAIL ="hieuvan2206@gmail.com";
+    // ////////////////////////khai bao email nha phat trien/////////////////////////////////////////
     private CheckBox cbAutoAdd;
     public SettingsTab(Library library, Scene scene, Runnable onLanguageChange, boolean isDarkMode) {
         this.library = library;
@@ -50,9 +57,14 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         // --- PHẦN 3: CẤU HÌNH EMAIL ---
         VBox emailSection = createEmailSection();
         VBox dataSection = createDataSection();
+        VBox supportSection = createSupportSection();
 
         // Thêm vào layout chính (Thêm rulesSection vào giữa)
-        mainLayout.getChildren().addAll(pageTitle, generalSection, new Separator(), rulesSection, new Separator(),dataSection, new Separator(), emailSection);
+        mainLayout.getChildren().addAll(pageTitle, generalSection,
+                new Separator(), rulesSection
+                , new Separator(),dataSection, new Separator(),emailSection,
+                new Separator(),
+                supportSection);
         this.setContent(mainLayout);
     }
     // chỉnh sửa số ngày mượn tối đa cũng như quy định mức phạt
@@ -118,7 +130,7 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
 
 
         // =================================================================
-        // KHỐI 2: CẤU HÌNH BARCODE & AUTO-ADD (Không cần mật khẩu hoặc tùy chọn)
+        // KHỐI 2: CẤU HÌNH BARCODE & AUTO-ADD
         // =================================================================
         VBox automationBox = new VBox(10);
         automationBox.getStyleClass().add("input-panel");
@@ -144,63 +156,6 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         // Thêm cả 2 khối vào container chính
         mainRulesContainer.getChildren().addAll(financeBox, automationBox);
         return mainRulesContainer;
-    }
-    // phương thức xử lý tiền phạt
-    /**
-     * Xử lý lưu Quy định (Cần mật khẩu Admin)
-     */
-    /**
-     * Lưu quy định tiền/ngày (BẮT BUỘC CÓ MẬT KHẨU ADMIN)
-     */
-    /**
-     * Lưu cấu hình Auto-Add (Lưu trực tiếp cho tiện)
-     */
-    private void handleSaveAutoSettings() {
-        boolean isAuto = autoAddCheckBox.isSelected();
-
-        // Lưu DB
-        boolean success = library.getSettingsDAO().saveSetting("auto_add_enabled", String.valueOf(isAuto));
-
-        if (success) {
-            FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION,
-                    LanguageManager.getText("msg.success"),
-                    "Cấu hình Barcode đã được cập nhật.");
-        } else {
-            FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR, LanguageManager.getText("msg.error"), "Lỗi lưu Database.");
-        }
-    }
-    private void handleSaveFinancialRules() {
-        String days = maxDaysField.getText().trim();
-        String fine = fineAmountField.getText().trim();
-        String curr = currencyField.getText().trim();
-
-        if (days.isEmpty() || fine.isEmpty() || curr.isEmpty()) {
-            FrontEnd.LibraryApp.showAlert(Alert.AlertType.WARNING, LanguageManager.getText("msg.error"), "Vui lòng nhập đủ thông tin.");
-            return;
-        }
-
-        // Hộp thoại mật khẩu
-        TextInputDialog passDialog = new TextInputDialog();
-        passDialog.setTitle(LanguageManager.getText("title.admin_required"));
-        passDialog.setHeaderText(LanguageManager.getText("header.save_rules"));
-        passDialog.setContentText(LanguageManager.getText("content.enter_admin_pass"));
-        passDialog.getDialogPane().setGraphic(new Label("🔒"));
-
-        java.util.Optional<String> result = passDialog.showAndWait();
-        if (result.isPresent() && "admin".equals(result.get())) {
-            // Lưu DB
-            library.getSettingsDAO().saveSetting("max_borrow_days", days);
-            library.getSettingsDAO().saveSetting("fine_per_day", fine);
-            library.getSettingsDAO().saveSetting("currency_unit", curr);
-
-            FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION,
-                    LanguageManager.getText("msg.success"),
-                    "Đã lưu quy định tài chính thành công!");
-        } else {
-            FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR,
-                    LanguageManager.getText("msg.error"),
-                    LanguageManager.getText("msg.wrong_pass"));
-        }
     }
 
     private VBox createGeneralSection(boolean isDarkMode) {
@@ -264,7 +219,7 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         // Button Save
         Button btnSave = new Button(LanguageManager.getText("btn.save_settings"));
         btnSave.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnSave.setOnAction(e -> handleSaveSettings());
+        btnSave.setOnAction(e -> handleSaveEmailSettings());
 
         // Load dữ liệu cũ
         String savedEmail = library.getSettingsDAO().getSetting("admin_email");
@@ -275,7 +230,24 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         box.getChildren().addAll(header, lblEmail, emailField, lblPass, passField, guide, btnSave);
         return box;
     }
+    // ---  PHƯƠNG THỨC TẠO GIAO DIỆN BACKUP ---
+    private VBox createDataSection() {
+        VBox box = new VBox(15);
 
+        Label header = new Label(LanguageManager.getText("header.data_management"));
+        header.getStyleClass().add("section-header-label");
+
+        // Nút Sao lưu
+        Button btnBackup = new Button("💾 " + LanguageManager.getText("btn.backup"));
+        btnBackup.getStyleClass().add("button-backup");
+        btnBackup.setOnAction(e -> handleBackup());
+
+        Label lblNote = new Label("Note: Back up your data regularly to avoid loss.");
+        lblNote.getStyleClass().add("label-note-italic");
+
+        box.getChildren().addAll(header, btnBackup, lblNote);
+        return box;
+    }
     // --- LOGIC XỬ LÝ ---
 
     private void handleToggleTheme(Button btn) {
@@ -321,82 +293,276 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         }
     }
 
-    private void handleSaveSettings() {
+    /**
+     * Lưu cấu hình Email (CÓ BẢO MẬT ADMIN)
+     */
+    private void handleSaveEmailSettings() {
+        // 1. Lấy dữ liệu và làm sạch
         String email = emailField.getText().trim();
+        // Xóa khoảng trắng trong mật khẩu (đề phòng copy paste thừa)
         String pass = passField.getText().trim().replace(" ", "");
 
+        // 2. Kiểm tra dữ liệu rỗng
         if (email.isEmpty() || pass.isEmpty()) {
             FrontEnd.LibraryApp.showAlert(Alert.AlertType.WARNING,
                     LanguageManager.getText("msg.error"),
-                    "Vui lòng nhập Email và Mật khẩu ứng dụng.");
+                    "Please enter your full email address and application password.");
             return;
         }
 
-        boolean save1 = library.getSettingsDAO().saveSetting("admin_email", email);
-        boolean save2 = library.getSettingsDAO().saveSetting("app_password", pass);
+        // --- 3. YÊU CẦU MẬT KHẨU ADMIN ---
+        TextInputDialog passDialog = new TextInputDialog();
+        passDialog.setTitle(LanguageManager.getText("title.admin_required"));
+        passDialog.setHeaderText(LanguageManager.getText("header.save_email")); // "Xác nhận thay đổi..."
+        passDialog.setContentText(LanguageManager.getText("content.enter_admin_pass"));
+        passDialog.getDialogPane().setGraphic(new javafx.scene.control.Label("🔒"));
 
-        if (save1 && save2) {
-            LibraryApp.showAlert(Alert.AlertType.INFORMATION, LanguageManager.getText("msg.success"), LanguageManager.getText("msg.settings_saved"));
-        } else {
-            LibraryApp.showAlert(Alert.AlertType.ERROR, LanguageManager.getText("msg.error"), "Lỗi Database.");
+        java.util.Optional<String> result = passDialog.showAndWait();
+
+        if (result.isPresent()) {
+            String inputPass = result.get();
+
+            // Kiểm tra mật khẩu (Mặc định là "admin")
+            if (ADMIN_PASSWORD.equals(inputPass)) {
+
+                // 4. MẬT KHẨU ĐÚNG -> TIẾN HÀNH LƯU VÀO DB
+                boolean save1 = library.getSettingsDAO().saveSetting("admin_email", email);
+                boolean save2 = library.getSettingsDAO().saveSetting("app_password", pass);
+
+                if (save1 && save2) {
+                    FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                            LanguageManager.getText("msg.success"),
+                            "Email configuration saved successfully.");
+                } else {
+                    FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR,
+                            LanguageManager.getText("msg.error"),
+                            "Error saving Database.");
+                }
+
+            } else {
+                // 5. MẬT KHẨU SAI -> BÁO LỖI
+                FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR,
+                        LanguageManager.getText("msg.error"),
+                        LanguageManager.getText("msg.wrong_pass"));
+            }
         }
     }
-    // ---  PHƯƠNG THỨC TẠO GIAO DIỆN BACKUP ---
-    private VBox createDataSection() {
-        VBox box = new VBox(15);
+    // phương thức xử lý tiền phạt
+    /**
+     * Xử lý lưu Quy định (Cần mật khẩu Admin)
+     */
+    /**
+     * Lưu quy định tiền/ngày (BẮT BUỘC CÓ MẬT KHẨU ADMIN)
+     */
+    /**
+     * Lưu cấu hình Auto-Add (Lưu trực tiếp cho tiện)
+     */
+    private void handleSaveAutoSettings() {
+        boolean isAuto = autoAddCheckBox.isSelected();
 
-        Label header = new Label(LanguageManager.getText("header.data_management"));
-        header.getStyleClass().add("section-header-label");
+        // Lưu DB
+        boolean success = library.getSettingsDAO().saveSetting("auto_add_enabled", String.valueOf(isAuto));
 
-        // Nút Sao lưu
-        Button btnBackup = new Button("💾 " + LanguageManager.getText("btn.backup"));
-        btnBackup.getStyleClass().add("button-backup");
-        btnBackup.setOnAction(e -> handleBackup());
-
-        Label lblNote = new Label("Lưu ý: Hãy sao lưu dữ liệu thường xuyên để tránh mất mát.");
-        lblNote.getStyleClass().add("label-note-italic");
-        // lblNote.setStyle("-fx-font-style: italic; -fx-text-fill: #666; -fx-font-size: 11px;"); // <-- BỎ DÒNG CŨ NÀY
-
-        box.getChildren().addAll(header, btnBackup, lblNote);
-        return box;
+        if (success) {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                    LanguageManager.getText("msg.success"),
+                    "The barcode configuration has been updated..");
+        } else {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR, LanguageManager.getText("msg.error"), "Error saving Database.");
+        }
     }
+    private void handleSaveFinancialRules() {
+        String days = maxDaysField.getText().trim();
+        String fine = fineAmountField.getText().trim();
+        String curr = currencyField.getText().trim();
+
+        if (days.isEmpty() || fine.isEmpty() || curr.isEmpty()) {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.WARNING, LanguageManager.getText("msg.error"), "Please enter all the required information.");
+            return;
+        }
+
+        // Hộp thoại mật khẩu
+        TextInputDialog passDialog = new TextInputDialog();
+        passDialog.setTitle(LanguageManager.getText("title.admin_required"));
+        passDialog.setHeaderText(LanguageManager.getText("header.save_rules"));
+        passDialog.setContentText(LanguageManager.getText("content.enter_admin_pass"));
+        passDialog.getDialogPane().setGraphic(new Label("🔒"));
+
+        java.util.Optional<String> result = passDialog.showAndWait();
+        if (result.isPresent() && ADMIN_PASSWORD.equals(result.get())) {
+            // Lưu DB
+            library.getSettingsDAO().saveSetting("max_borrow_days", days);
+            library.getSettingsDAO().saveSetting("fine_per_day", fine);
+            library.getSettingsDAO().saveSetting("currency_unit", curr);
+
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                    LanguageManager.getText("msg.success"),
+                    "Financial regulations have been successfully saved!");
+        } else {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR,
+                    LanguageManager.getText("msg.error"),
+                    LanguageManager.getText("msg.wrong_pass"));
+        }
+    }
+
+
     // ---  XỬ LÝ SỰ KIỆN BACKUP ---
+
     private void handleBackup() {
-        // 1. Mở hộp thoại chọn nơi lưu file
-        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-        fileChooser.setTitle(LanguageManager.getText("title.save_backup"));
+        // 1. Sử dụng DirectoryChooser để chọn THƯ MỤC lưu trữ
+        javafx.stage.DirectoryChooser directoryChooser = new javafx.stage.DirectoryChooser();
+        directoryChooser.setTitle(LanguageManager.getText("title.save_backup")); // "Chọn thư mục sao lưu"
 
-        // Tạo tên file gợi ý: library_backup_YYYY-MM-DD.db
-        String date = java.time.LocalDate.now().toString();
-        fileChooser.setInitialFileName("library_backup_" + date + ".db");
+        // Lấy cửa sổ hiện tại để hiện dialog
+        java.io.File selectedDirectory = directoryChooser.showDialog(this.getScene().getWindow());
 
-        // Chỉ cho lưu file .db
-        fileChooser.getExtensionFilters().add(
-                new javafx.stage.FileChooser.ExtensionFilter("SQLite Database", "*.db")
-        );
-
-        java.io.File dest = fileChooser.showSaveDialog(null);
-
-        if (dest != null) {
+        if (selectedDirectory != null) {
             try {
-                // 2. Gọi BackupService
-                boolean success = Boolean.parseBoolean(BackEnd.Utils.BackupService.backupDatabase(dest));
+                // 2. Gọi BackupService mới (Truyền Folder và Library)
+                // Lưu ý: BackupService trả về "true" hoặc chuỗi lỗi
+                String result = BackEnd.Utils.BackupService.backupDataToCSV(selectedDirectory, library);
 
-                if (success) {
+                if ("true".equals(result)) {
                     FrontEnd.LibraryApp.showAlert(
                             javafx.scene.control.Alert.AlertType.INFORMATION,
                             LanguageManager.getText("msg.success"),
-                            LanguageManager.getText("msg.backup_success") + "\n" + dest.getAbsolutePath()
+                            LanguageManager.getText("msg.backup_success") + "\n📂 " + selectedDirectory.getAbsolutePath()
+                    );
+                } else {
+                    // Trường hợp có lỗi (trả về chuỗi ERROR...)
+                    FrontEnd.LibraryApp.showAlert(
+                            javafx.scene.control.Alert.AlertType.WARNING,
+                            "Kết quả chi tiết", // Tiêu đề
+                            result.replace("ERROR:\n", "") // Nội dung lỗi
                     );
                 }
             } catch (Exception ex) {
                 FrontEnd.LibraryApp.showAlert(
                         javafx.scene.control.Alert.AlertType.ERROR,
                         LanguageManager.getText("msg.error"),
-                        "ERROR " + ex.getMessage()
+                        "Lỗi hệ thống: " + ex.getMessage()
                 );
                 ex.printStackTrace();
             }
         }
     }
+    // --- PHẦN 3: TẠO GIAO DIỆN BÁO CÁO/GÓP Ý ---
+    private VBox createSupportSection() {
+        VBox box = new VBox(15);
+        box.setPadding(new Insets(10));
+
+        Label header = new Label(LanguageManager.getText("header.support"));
+        header.getStyleClass().add("section-title");
+
+        Button btnSendReport = new Button("📧 " + LanguageManager.getText("btn.send_report"));
+        btnSendReport.getStyleClass().addAll("action-btn", "btn-gray"); // Màu xám cho tính năng phụ
+        btnSendReport.setOnAction(e -> handleSendReport());
+
+        Label lblDesc = new Label("Use this feature to send feedback or bug reports directly to the support team.");
+        lblDesc.setStyle("-fx-font-style: italic; -fx-text-fill: #7f8c8d; -fx-font-size: 11px;");
+
+        box.getChildren().addAll(header, lblDesc, btnSendReport);
+        return box;
+    }
+
+    // --- XỬ LÝ LOGIC GỬI BÁO CÁO ---
+    private void handleSendReport() {
+        // 1. Kiểm tra cấu hình Email bắt buộc
+        String senderEmail = library.getSettingsDAO().getSetting("admin_email");
+        String appPassword = library.getSettingsDAO().getSetting("app_password");
+
+        if (senderEmail.isEmpty() || appPassword.isEmpty() || ! BackEnd.Utils.EmailService.isValidEmail(senderEmail)) {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR,
+                    LanguageManager.getText("msg.error"),
+                    "Please configure your email and password for the application before submitting your report.");
+            return;
+        }
+
+        // 2. Tạo Hộp thoại tùy chỉnh cho Báo cáo
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(LanguageManager.getText("title.send_report"));
+        dialog.setHeaderText(LanguageManager.getText("title.send_report"));
+
+        // Cấu trúc UI trong Dialog
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField recipientField = new TextField(DEVELOPER_SUPPORT_EMAIL);
+        recipientField.setEditable(false); // Developer email là cố định
+
+        TextField subjectField = new TextField("REPORT BUGS / PROVIDE FEEDBACK FROM THE APP");
+
+        TextArea messageArea = new TextArea();
+        messageArea.setPromptText("Provide a detailed description of the problem, error, or your suggestion...");
+        messageArea.setWrapText(true);
+        messageArea.setPrefHeight(200);
+
+        grid.add(new Label(LanguageManager.getText("label.recipient") + ":"), 0, 0);
+        grid.add(recipientField, 1, 0);
+        grid.add(new Label(LanguageManager.getText("label.subject_report") + ":"), 0, 1);
+        grid.add(subjectField, 1, 1);
+        grid.add(new Label(LanguageManager.getText("label.message") + ":"), 0, 2);
+        grid.add(messageArea, 1, 2);
+        GridPane.setHgrow(messageArea, Priority.ALWAYS);
+        GridPane.setHgrow(subjectField, Priority.ALWAYS);
+
+        dialog.getDialogPane().setContent(grid);
+
+        // Thêm nút OK và Cancel
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        // 3. Xử lý kết quả khi bấm OK
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == ButtonType.OK) {
+                // Chạy tác vụ gửi mail trong Thread nền
+                Task<Boolean> sendTask = new Task<>() {
+                    @Override
+                    protected Boolean call() throws Exception {
+                        String subject = subjectField.getText().trim();
+                        String body = messageArea.getText().trim() +
+                                "\n\n--- Infomation of Sender ---\nEmail: " + senderEmail + "\n";
+
+                        // Gọi EmailService để gửi
+                        return BackEnd.Utils.EmailService.sendEmail(
+                                DEVELOPER_SUPPORT_EMAIL,
+                                subject,
+                                body,
+                                senderEmail,
+                                appPassword
+                        );
+                    }
+                };
+
+                sendTask.setOnRunning(e -> {
+                    // Hiện Progress Indicator nếu cần
+                });
+
+                sendTask.setOnSucceeded(e -> {
+                    if (sendTask.getValue()) {
+                        FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION,
+                                LanguageManager.getText("msg.success"),
+                                LanguageManager.getText("msg.report_sent"));
+                    } else {
+                        FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR,
+                                LanguageManager.getText("msg.error"),
+                                LanguageManager.getText("msg.report_fail"));
+                    }
+                });
+
+                sendTask.setOnFailed(e -> {
+                    FrontEnd.LibraryApp.showAlert(Alert.AlertType.ERROR,
+                            LanguageManager.getText("msg.error"),
+                            LanguageManager.getText("msg.report_fail") + "\nChi tiết: " + sendTask.getException().getMessage());
+                });
+
+                new Thread(sendTask).start();
+            }
+            return null;
+        });
+
+        dialog.showAndWait();
+    }
+
 }
