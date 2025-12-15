@@ -206,6 +206,7 @@ public class BookDAO {
 
     // --- Các hàm hỗ trợ khác ---
     public Book getBookById(String id) {
+        id.toLowerCase();
         // Tìm trong Cache trước (Nhanh hơn DB nhiều)
         return cachedBooks.stream()
                 .filter(b -> b.getId().equals(id))

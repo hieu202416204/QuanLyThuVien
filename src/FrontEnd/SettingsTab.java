@@ -23,6 +23,8 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
     private final Scene scene;
     private final Runnable onLanguageChange; // Hàm callback để báo cho App biết cần vẽ lại
 
+    private TextField licenseField;
+    private Label lblCurrentLevel;
     // Email Controls
     private TextField emailField;
     private PasswordField passField;
@@ -58,13 +60,15 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         VBox emailSection = createEmailSection();
         VBox dataSection = createDataSection();
         VBox supportSection = createSupportSection();
+        VBox license = createLicenseSection();
 
         // Thêm vào layout chính (Thêm rulesSection vào giữa)
         mainLayout.getChildren().addAll(pageTitle, generalSection,
                 new Separator(), rulesSection
                 , new Separator(),dataSection, new Separator(),emailSection,
                 new Separator(),
-                supportSection);
+                supportSection,
+                new Separator(), license);
         this.setContent(mainLayout);
     }
     // chỉnh sửa số ngày mượn tối đa cũng như quy định mức phạt
@@ -194,6 +198,7 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
     }
 
     private VBox createEmailSection() {
+
         VBox box = new VBox(15);
 
         Label header = new Label(LanguageManager.getText("header.email_settings"));
@@ -219,7 +224,13 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         // Button Save
         Button btnSave = new Button(LanguageManager.getText("btn.save_settings"));
         btnSave.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnSave.setOnAction(e -> handleSaveEmailSettings());
+        btnSave.setOnAction(e ->{
+        if (!BackEnd.Utils.LicenseManager.isProFeature()) {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.WARNING, "Tính năng PRO",
+                    "Gửi email chỉ dành cho bản PRO.");
+            return;
+        }
+                handleSaveEmailSettings();});
 
         // Load dữ liệu cũ
         String savedEmail = library.getSettingsDAO().getSetting("admin_email");
@@ -240,8 +251,14 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         // Nút Sao lưu
         Button btnBackup = new Button("💾 " + LanguageManager.getText("btn.backup"));
         btnBackup.getStyleClass().add("button-backup");
-        btnBackup.setOnAction(e -> handleBackup());
-
+        btnBackup.setOnAction(e -> {
+            if (!BackEnd.Utils.LicenseManager.isProFeature()) {
+                FrontEnd.LibraryApp.showAlert(Alert.AlertType.WARNING, "Tính năng PRO",
+                        "Sao lưu dữ liệu chỉ dành cho bản PRO.");
+                return;
+            }
+            handleBackup();
+        });
         Label lblNote = new Label("Note: Back up your data regularly to avoid loss.");
         lblNote.getStyleClass().add("label-note-italic");
 
@@ -467,6 +484,11 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
 
     // --- XỬ LÝ LOGIC GỬI BÁO CÁO ---
     private void handleSendReport() {
+        if (!BackEnd.Utils.LicenseManager.canSendEmail()) {
+            FrontEnd.LibraryApp.showAlert(Alert.AlertType.WARNING, "Tính năng cao cấp",
+                    "Tính năng Gửi Email chỉ dành cho bản PLUS và PRO.\nVui lòng nâng cấp.");
+            return;
+        }
         // 1. Kiểm tra cấu hình Email bắt buộc
         String senderEmail = library.getSettingsDAO().getSetting("admin_email");
         String appPassword = library.getSettingsDAO().getSetting("app_password");
@@ -563,6 +585,68 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         });
 
         dialog.showAndWait();
+    }
+    private Label lblCurrentMac;
+    private VBox createLicenseSection() {
+        VBox box = new VBox(15);
+        box.setStyle("-fx-background-color: #fcf3cf; -fx-border-color: #f1c40f; -fx-border-radius: 5; -fx-padding: 15;");
+
+        Label header = new Label("Copyright Status (License)");
+        header.getStyleClass().add("section-title");
+        header.setStyle("-fx-text-fill: #d35400;");
+
+        // Hiển thị cấp độ hiện tại
+        lblCurrentLevel = new Label("Current level: " + BackEnd.Utils.LicenseManager.getLevelName());
+        lblCurrentLevel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+
+        HBox inputGroup = new HBox(10);
+        inputGroup.setAlignment(Pos.CENTER_LEFT);
+
+        licenseField = new TextField();
+        licenseField.setPromptText("Enter the activation codet (VD: KEY-PRO-2025)");
+        licenseField.setPrefWidth(250);
+        // Load key cũ
+        licenseField.setText(library.getSettingsDAO().getSetting("license_key"));
+
+        Button btnActivate = new Button("Activate");
+        btnActivate.setStyle("-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnActivate.setOnAction(e -> handleActivateLicense());
+
+        inputGroup.getChildren().addAll(new Label("License Key:"), licenseField, btnActivate);
+
+        Label lblNote = new Label("Free: MAXIMUM " + BackEnd.Utils.LicenseManager.LIMIT_BOOKS_FREE + " books.\n" +
+                "Plus: Email + 1000 books.\n" +
+                "Pro: Full options + Backup + NO LIMITED.");
+        lblNote.setStyle("-fx-font-size: 11px; -fx-text-fill: #7f8c8d;");
+
+        //  HIỂN THỊ MAC ADDRESS
+        String currentMac = BackEnd.Utils.HardwareID.getMacAddress();
+        String storedMac = library.getSettingsDAO().getSetting("hardware_id");
+
+        lblCurrentMac = new Label("ID máy hiện tại: " + currentMac);
+        lblCurrentMac.setStyle("-fx-font-size: 11px; -fx-text-fill: #34495e;");
+
+        Label lblStoredMac = new Label("ID máy đã khóa: " + (storedMac != null ? storedMac : "Chưa khóa"));
+        lblStoredMac.setStyle("-fx-font-size: 11px; -fx-text-fill: #e74c3c;");
+        box.getChildren().addAll(header, lblCurrentLevel, inputGroup, lblNote, lblCurrentMac,lblStoredMac);
+        return box;
+    }
+
+    private void handleActivateLicense() {
+        String key = licenseField.getText().trim();
+
+        // Lưu key vào DB
+        library.getSettingsDAO().saveSetting("license_key", key);
+
+        // Load lại trạng thái
+        BackEnd.Utils.LicenseManager.init(library);
+
+        // Cập nhật Label
+        lblCurrentLevel.setText("Cấp độ hiện tại: " + BackEnd.Utils.LicenseManager.getLevelName());
+
+        FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION, "Thành công",
+                "Đã cập nhật License thành: " + BackEnd.Utils.LicenseManager.getLevelName() +
+                        "\nVui lòng khởi động lại ứng dụng để áp dụng đầy đủ thay đổi.");
     }
 
 }

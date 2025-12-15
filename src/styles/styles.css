@@ -1,4 +1,3 @@
-/* styles.css */
 
 /* --- GLOBAL & BASE --- */
 .root {
@@ -10,6 +9,8 @@
 .label {
     -fx-text-fill: #333333;
 }
+
+
 .text-field {
     -fx-background-color: white;
     -fx-border-color: #e0e0e0;
@@ -33,6 +34,7 @@
     -fx-tab-min-width: 140px;
     -fx-base: #f7f9fc;
 }
+
 .tab {
     -fx-font-size: 14px;
     -fx-font-weight: 600;
@@ -166,6 +168,7 @@
 
 /* Nền Tab Pane */
 .dark-mode .tab-pane {
+    -fx-control-inner-background: #2c3e50;
     -fx-base: #2c3e50;
 }
 .dark-mode .tab {
@@ -192,6 +195,10 @@
     -fx-background-color: #34495e;
     -fx-border-color: #555555;
     -fx-text-fill: #ecf0f1;
+}
+.dark-mode .tab-pane .tab-content-area {
+    -fx-background-color: #2c3e50;
+    -fx-padding: 0; /* Xóa khoảng đệm nếu muốn giao diện phẳng hoàn toàn */
 }
 
 /* Nền TableView */
@@ -707,4 +714,32 @@
 }
 .dark-mode .chart-plot-background {
     -fx-background-color: transparent;
+}
+/* =========================================================
+   --- FIX NAVIGATION BAR BACKGROUND ---
+   ========================================================= */
+
+/* 1. Trạng thái Sáng (Light Mode) */
+.nav-bar-container {
+    -fx-background-color: #ecf0f1; /* Màu trắng xám cũ của bạn */
+    -fx-border-color: #bdc3c7;
+    -fx-border-width: 0 0 1 0;     /* Chỉ kẻ viền dưới */
+    -fx-padding: 10;
+    -fx-alignment: center-left;
+    -fx-spacing: 10;
+}
+
+/* 2. Trạng thái Tối (Dark Mode Override) */
+.dark-mode .nav-bar-container {
+    -fx-background-color: #2c3e50; /* Đổi sang màu tối trùng nền app */
+    -fx-border-color: #444444;     /* Viền tối hơn */
+}
+
+/* 3. Fix nền cho thanh cuộn bao ngoài (ScrollPane) */
+.dark-mode .nav-scroll-pane {
+    -fx-background: #2c3e50;
+    -fx-background-color: #2c3e50;
+}
+.dark-mode .nav-scroll-pane > .viewport {
+    -fx-background-color: #2c3e50;
 }

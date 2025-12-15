@@ -214,7 +214,7 @@ public class HomeTab extends ScrollPane {
     }
 
     // =========================================================================
-    // 3. --- MỚI: VISITOR STATISTICS SECTION ---
+    // 3. --- VISITOR STATISTICS SECTION ---
     // =========================================================================
     private VBox createVisitStatsSection() {
         VBox container = new VBox(15);

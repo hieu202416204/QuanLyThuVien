@@ -1,6 +1,7 @@
 package BackEnd.Utils;
 
 import BackEnd.LibraryQ.Library;
+import BackEnd.User.User;
 import Database.VisitDAO;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -54,28 +55,33 @@ public class BarcodeScannerHandler {
         });
     }
 
-    private void handleScannedCode(String userId) {
-        // Kiểm tra xem mã này có phải User ID trong hệ thống không
-        if (library.getUserDAO().getUserById(userId) != null) {
+    private void handleScannedCode(String code) {
 
-            // 1. Ghi vào DB (Chạy trên Thread riêng để không lag UI)
-            new Thread(() -> {
-                boolean success = visitDAO.checkIn(userId);
+        // 1. Lấy User từ Library (an toàn nhất)
+        User user = library.getUserDAO().getUserById(code);
 
-                if (success) {
-                    Platform.runLater(() -> {
-                        // 2. Thông báo nhỏ (Notification) hoặc phát âm thanh 'Bíp'
-                        showNotification("Welcome: " + userId);
-                        playSoundSuccess();
-                    });
-                }
-            }).start();
-
-        } else {
-            // Nếu quét nhầm mã sách hoặc mã rác thì bỏ qua hoặc báo lỗi nhẹ
-            System.out.println("Scanned code not a User: " + userId);
+        if (user == null) {
+            System.out.println("Not a user barcode: " + code);
+            return;
         }
+
+        // 2. Chạy VisitDAO trên thread riêng — nhưng không dùng AWT (tránh crash)
+        new Thread(() -> {
+            boolean ok = false;
+            try {
+                ok = visitDAO.checkIn(code);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (ok) {
+                Platform.runLater(() -> {
+                    System.out.println("CHECK-IN: " + code);
+                });
+            }
+        }).start();
     }
+
 
     private void showNotification(String msg) {
         // Hiển thị thông báo nhỏ ở góc (Toast) hoặc System out

@@ -1,14 +1,64 @@
 package Database;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 public class DatabaseManager {
-    private static final String URL = "jdbc:sqlite:library.db";
+    private static final String DB_FILENAME = "library.db";
+    private static String getDatabasePath() {
+        String dbPath = "";
+
+        try {
+            // CÁCH 1 (ƯU TIÊN): Dùng System Property "user.dir" (Thư mục làm việc hiện tại)
+            // Trong môi trường đã đóng gói, đây là thư mục chứa file EXE.
+            String workingDir = System.getProperty("user.dir");
+            File dbFile = new File(workingDir, DB_FILENAME);
+
+            if (dbFile.exists() || dbFile.createNewFile()) {
+                // Nếu tìm thấy hoặc tạo được file ở thư mục làm việc, ta dùng nó
+                dbPath = dbFile.getAbsolutePath();
+                System.out.println("Sử dụng đường dẫn CÁCH 1: " + dbPath);
+                return "jdbc:sqlite:" + dbPath;
+            }
+
+        } catch (Exception e) {
+            System.err.println("Lỗi CÁCH 1: " + e.getMessage());
+        }
+
+        // CÁCH 2 (FALLBACK): Nếu CÁCH 1 không được (ví dụ: lỗi quyền ghi), chuyển sang thư mục User Home an toàn
+        try {
+            String userHome = System.getProperty("user.home");
+            File appDataDir = new File(userHome, ".QuanLyThuVien"); // Thư mục ẩn trong User Home
+
+            if (!appDataDir.exists()) {
+                appDataDir.mkdirs();
+            }
+
+            File dbFile = new File(appDataDir, DB_FILENAME);
+            dbPath = dbFile.getAbsolutePath();
+
+            System.out.println("Sử dụng đường dẫn CÁCH 2 (User Home): " + dbPath);
+            return "jdbc:sqlite:" + dbPath;
+
+        } catch (Exception e) {
+            System.err.println("Lỗi CÁCH 2 (User Home): " + e.getMessage());
+            // CÁCH 3: TRẢ VỀ CÁCH THỦ CÔNG (Chỉ dùng khi cả 2 cách trên đều thất bại)
+            return "jdbc:sqlite:" + DB_FILENAME;
+        }
+    }
+
+    private static final String URL = getDatabasePath();
 
     public static Connection getConnection() throws SQLException {
+        // Đăng ký driver (Cần thiết, mặc dù JDBC 4.0+ tự động đăng ký)
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("Không tìm thấy Driver SQLite: " + e.getMessage());
+        }
         return DriverManager.getConnection(URL);
     }
 
