@@ -82,7 +82,14 @@ public class BorrowReturnTab extends HBox {
         statusLabel.setWrapText(true);
 
         // --- SMART SCAN EVENT ---
-        barcodeField.setOnAction(e -> handleSmartScan());
+        // Sử dụng setOnKeyPressed để bắt sự kiện sớm hơn và chặn nó lại
+        barcodeField.setOnKeyPressed(event -> {
+            // Chỉ xử lý khi nhấn Enter (máy quét thường gửi Enter ở cuối chuỗi)
+            if (event.getCode() == javafx.scene.input.KeyCode.ENTER) {
+                handleSmartScan();
+                event.consume();
+            }
+        });
 
         VBox scanBox = new VBox(5, new Label(LanguageManager.getText("label.scan_title")), barcodeField, statusLabel);
         scanBox.getStyleClass().add("scan-box");
@@ -253,11 +260,10 @@ public class BorrowReturnTab extends HBox {
 
         // Cập nhật giao diện toàn cục (Gọi về LibraryApp)
         globalRefreshCallback.run();
-
         boolean success = msg.contains("Success") || msg.contains("Thành công");
 
         if (success) {
-            java.awt.Toolkit.getDefaultToolkit().beep();
+//            java.awt.Toolkit.getDefaultToolkit().beep();
             statusLabel.setText("✅ Borrowed: " + bId);
             updateStatusStyle("scan-status-success");
             userIdField.clear();

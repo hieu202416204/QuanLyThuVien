@@ -2,101 +2,97 @@ package BackEnd.Utils;
 
 import BackEnd.LibraryQ.Library;
 import BackEnd.User.User;
-import Database.VisitDAO;
 import javafx.application.Platform;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.TextInputControl;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 
 public class BarcodeScannerHandler {
-
+    private final Library library;
     private final StringBuilder barcodeBuffer = new StringBuilder();
     private long lastKeystrokeTime = 0;
 
-    // Ngưỡng thời gian giữa các phím để phân biệt máy quét và người gõ tay.
-    // Máy quét thường < 50ms/ký tự. Người gõ > 100ms.
-    private static final long THRESHOLD_MS = 100;
-
-    private final VisitDAO visitDAO = new VisitDAO();
-    private final Library library;
+    // Thời gian tối đa giữa 2 ký tự để coi là máy quét (ms)
+    // Máy quét thường bắn rất nhanh (<50ms), người gõ phím thì chậm hơn
+    private static final long SCANNER_THRESHOLD = 100;
 
     public BarcodeScannerHandler(Library library) {
         this.library = library;
     }
 
-    /**
-     * Gắn bộ lắng nghe vào Scene chính của ứng dụng
-     */
     public void attachToScene(Scene scene) {
+        // Sử dụng addEventFilter để "đón lõng" sự kiện ngay từ gốc (trước khi đến Button hay TextField)
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            long currentTime = System.currentTimeMillis();
 
-            // Nếu người dùng nhập quá chậm, reset buffer (coi như đang gõ phím bình thường)
-            if (currentTime - lastKeystrokeTime > THRESHOLD_MS && barcodeBuffer.length() > 0) {
+            // 1. KIỂM TRA QUAN TRỌNG:
+            // Nếu người dùng đang focus vào một ô nhập liệu (TextField, TextArea...)
+            // -> THÌ BỎ QUA NGAY (để ô đó tự xử lý việc nhập/quét)
+            Node focusOwner = scene.getFocusOwner();
+            if (focusOwner instanceof TextInputControl) {
+                return;
+            }
+
+            // 2. Logic phát hiện máy quét (Dựa trên tốc độ nhập)
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastKeystrokeTime > SCANNER_THRESHOLD) {
+                // Nếu khoảng cách giữa 2 phím quá lâu -> Người dùng đang gõ tay -> Reset buffer
                 barcodeBuffer.setLength(0);
             }
             lastKeystrokeTime = currentTime;
 
-            switch (event.getCode()) {
-                case ENTER:
-                    if (barcodeBuffer.length() > 0) {
-                        String code = barcodeBuffer.toString().trim();
-                        handleScannedCode(code);
-                        barcodeBuffer.setLength(0); // Reset sau khi xử lý
-                        event.consume(); // Chặn sự kiện Enter để không ảnh hưởng UI khác
-                    }
-                    break;
-                default:
-                    // Chỉ nhận ký tự chữ và số
-                    if (event.getText() != null && !event.getText().isEmpty()) {
-                        barcodeBuffer.append(event.getText());
-                    }
-                    break;
+            // 3. Xử lý ký tự
+            if (event.getCode() == KeyCode.ENTER) {
+                // Nếu nhấn Enter và buffer có dữ liệu -> XỬ LÝ QUÉT
+                if (barcodeBuffer.length() > 0) {
+                    String code = barcodeBuffer.toString().trim();
+                    handleGlobalCheckIn(code); // Gọi hàm xử lý
+
+                    barcodeBuffer.setLength(0); // Reset sau khi xử lý
+                    event.consume(); // Chặn sự kiện Enter để không kích hoạt nút bấm đang focus
+                }
+            } else {
+                // Chỉ thu thập ký tự in được (chữ, số)
+                if (event.getText().length() == 1) {
+                    barcodeBuffer.append(event.getText());
+                }
             }
         });
     }
 
-    private void handleScannedCode(String code) {
+    // --- LOGIC CHECK-IN NGƯỜI DÙNG ---
+    private void handleGlobalCheckIn(String userId) {
+        userId = userId.toUpperCase();
+        System.out.println("Global Scanner detected: " + userId);
 
-        // 1. Lấy User từ Library (an toàn nhất)
-        User user = library.getUserDAO().getUserById(code);
+        // Tìm User trong hệ thống
+        User user = library.searchUserById(userId);
 
-        if (user == null) {
-            System.out.println("Not a user barcode: " + code);
-            return;
+        if (user != null) {
+            String finalUserId = userId;
+            Platform.runLater(() -> {
+                // Thực hiện logic check-in
+                library.checkIn(finalUserId);
+
+                // Hiển thị thông báo nhỏ hoặc popup
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Check-in Success");
+                alert.setHeaderText("Welcome, " + user.getName());
+                alert.setContentText("Check-in time recorded.");
+                alert.show();
+
+                // Tự động đóng popup sau 2 giây (để đỡ phải click)
+                new Thread(() -> {
+                    try { Thread.sleep(1000); } catch (InterruptedException e) {}
+                    Platform.runLater(alert::close);
+                }).start();
+            });
+        } else {
+            // Nếu quét mã không phải User (ví dụ quét nhầm mã sách ở màn hình chính)
+            // Thì có thể bỏ qua hoặc báo lỗi nhẹ
+            System.out.println("Unknown code scanned globally: " + userId);
         }
-
-        // 2. Chạy VisitDAO trên thread riêng — nhưng không dùng AWT (tránh crash)
-        new Thread(() -> {
-            boolean ok = false;
-            try {
-                ok = visitDAO.checkIn(code);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            if (ok) {
-                Platform.runLater(() -> {
-                    System.out.println("CHECK-IN: " + code);
-                });
-            }
-        }).start();
-    }
-
-
-    private void showNotification(String msg) {
-        // Hiển thị thông báo nhỏ ở góc (Toast) hoặc System out
-        // Ở đây dùng Alert tạm thời, tốt nhất nên dùng thư viện Toast (như ControlsFX)
-        System.out.println("✅ CHECK-IN SUCCESS: " + msg);
-
-        // Bạn có thể update 1 Label nhỏ ở góc màn hình HomeUI tại đây
-    }
-
-    private void playSoundSuccess() {
-        // (Tùy chọn) Phát tiếng bíp
-        try {
-            // AudioClip beep = new AudioClip(getClass().getResource("/resources/beep.wav").toString());
-            // beep.play();
-            java.awt.Toolkit.getDefaultToolkit().beep();
-        } catch (Exception e) {}
     }
 }

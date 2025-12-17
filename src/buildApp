@@ -1,0 +1,1 @@
+jpackage --type app-image --input out\artifacts\QuanLyThuVien_jar --dest FinalBuild --name QuanLyThuVien --main-jar QuanLyThuVien.jar --main-class FrontEnd.Launcher --runtime-image runtime --icon src\resources\iconLib.ico

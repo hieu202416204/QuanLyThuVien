@@ -20,7 +20,6 @@ public class DatabaseManager {
             if (dbFile.exists() || dbFile.createNewFile()) {
                 // Nếu tìm thấy hoặc tạo được file ở thư mục làm việc, ta dùng nó
                 dbPath = dbFile.getAbsolutePath();
-                System.out.println("Sử dụng đường dẫn CÁCH 1: " + dbPath);
                 return "jdbc:sqlite:" + dbPath;
             }
 
@@ -28,7 +27,6 @@ public class DatabaseManager {
             System.err.println("Lỗi CÁCH 1: " + e.getMessage());
         }
 
-        // CÁCH 2 (FALLBACK): Nếu CÁCH 1 không được (ví dụ: lỗi quyền ghi), chuyển sang thư mục User Home an toàn
         try {
             String userHome = System.getProperty("user.home");
             File appDataDir = new File(userHome, ".QuanLyThuVien"); // Thư mục ẩn trong User Home
@@ -109,7 +107,6 @@ public class DatabaseManager {
                     + ");";
             stmt.execute(sqlSettings);
 // --- 5. TỐI ƯU HÓA: TẠO INDEX ---
-            // Phần này giúp tìm kiếm NHANH GẤP NHIỀU LẦN
 
             // Index cho tìm kiếm sách theo Tên
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_books_name ON books(name)");

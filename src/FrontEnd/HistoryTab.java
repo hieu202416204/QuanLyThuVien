@@ -48,6 +48,7 @@ public class HistoryTab extends VBox {
 
         historyTable.getColumns().setAll(colTime, colUser, colBook, colAction);
         historyTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        historyTable.setMinHeight(500);
 
         historyPagination = new Pagination();
         historyPagination.setPageFactory(this::createPage);

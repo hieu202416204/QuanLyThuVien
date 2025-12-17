@@ -9,6 +9,7 @@ public class LicenseManager {
     public static final String KEY_PRO = "jahsdjssfubvu17234b!&!@%!^vnewuivewi18924!@**!*@!&@!@!";
 
     public enum Level {
+
         FREE, PLUS, PRO
     }
 

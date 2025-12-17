@@ -14,6 +14,7 @@ public class Library {
     private final TransactionDAO transactionDAO;
     private final SettingsDAO settingsDAO; // cho biet so luong ngay qua han duoc phep, so tien phai tra tu database
     private final FinancialDAO financialDAO;
+    private final VisitDAO visitDAO;
     // Constructor: Khởi tạo các DAO
     public Library() {
         this.bookDAO = new BookDAO();
@@ -21,6 +22,7 @@ public class Library {
         this.transactionDAO = new TransactionDAO();
         this.settingsDAO = new SettingsDAO();
         this.financialDAO = new FinancialDAO();
+        this.visitDAO = new VisitDAO();
     }
 
     // ----------------------------------------------------------------------
@@ -47,7 +49,13 @@ public class Library {
         return this.financialDAO;
     }
 
+    public VisitDAO getVisitDAO() {
+        return this.visitDAO;
+    }
 
+    public boolean checkIn(String userId){
+        return visitDAO.checkIn(userId);
+    }
     public Book findBookById(String bookId) {
         return bookDAO.getBookById(bookId);
     }
@@ -68,11 +76,7 @@ public class Library {
         return userDAO.getAllUsers();
     }
 
-    public User findUserById(String userId) {
-        return userDAO.getUserById(userId);
-    }
-
-    // Phương thức tìm kiếm (đã sửa để gọi DAO)
+    // Phương thức tìm kiếm
     public User searchUserById(String userId){
         return userDAO.getUserById(userId);
     }

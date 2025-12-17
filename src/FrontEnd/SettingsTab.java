@@ -14,6 +14,7 @@ import javafx.scene.layout.VBox;
 
 import static FrontEnd.LibraryApp.ADMIN_PASSWORD;
 
+
 public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh bị che khi màn hình nhỏ
     // Rules Controls
     private TextField maxDaysField;

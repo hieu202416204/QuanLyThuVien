@@ -18,6 +18,8 @@ import javafx.scene.layout.VBox;
 
 import java.util.List;
 
+import static FrontEnd.LibraryApp.ADMIN_PASSWORD;
+
 public class StatisticTab extends VBox {
     private final Library library;
     private final UserStatistic userStatistic;
@@ -27,8 +29,6 @@ public class StatisticTab extends VBox {
     private TableView<User> topUserTable;
     private TableView<Book> topBookTable;
     private Label titleUser, titleBook;
-
-    private static final String ADMIN_PASSWORD = "adminPro1@#$!@#@!";
 
     public StatisticTab(Library library, Runnable globalRefreshCallback) {
         this.library = library;
@@ -74,6 +74,7 @@ public class StatisticTab extends VBox {
         // --- Table Top Users ---
         topUserTable = new TableView<>();
         topUserTable.setMinWidth(400);
+        topUserTable.setMinHeight(500);
 
         TableColumn<User, String> colURank = new TableColumn<>(LanguageManager.getText("col.rank"));
         colURank.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(topUserTable.getItems().indexOf(data.getValue()) + 1)));
@@ -85,6 +86,7 @@ public class StatisticTab extends VBox {
         colUCount.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().getSoSachDaMuon())));
 
         topUserTable.getColumns().addAll(colURank, colUName, colUCount);
+        topUserTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         titleUser = new Label(LanguageManager.getText("title.top_users"));
         titleUser.getStyleClass().add("page-title");
@@ -106,6 +108,9 @@ public class StatisticTab extends VBox {
         colBCount.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().getSoLuotMuon())));
 
         topBookTable.getColumns().addAll(colBRank, colBName, colBCount);
+        topBookTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        topBookTable.setMinHeight(500);
+
 
         titleBook = new Label(LanguageManager.getText("title.top_books"));
         titleBook.getStyleClass().add("page-title");

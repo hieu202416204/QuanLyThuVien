@@ -12,7 +12,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import javax.imageio.ImageIO;
@@ -22,16 +22,21 @@ import java.net.URL;
 import java.util.List;
 import java.util.function.Function;
 
-public class BookGalleryTab extends StackPane { // Đổi sang StackPane để canh giữa tốt hơn
+public class BookGalleryTab extends VBox {
 
     private final Library library;
     private final Function<BufferedImage, Image> resizeConverter;
 
-    // Cấu hình phân trang
-    private static final int ITEMS_PER_PAGE = 24; // Tăng số lượng lên chút cho đẹp
-    private Pagination pagination;
-    private List<Book> cachedBooks;
+    // --- CÁC THÀNH PHẦN UI CỐ ĐỊNH (STATIC) ---
+    private final ScrollPane mainScrollPane;
+    private final FlowPane galleryFlowPane;
+    private final Pagination pagination;
 
+    // Data Cache
+    private List<Book> cachedBooks;
+    private static final int ITEMS_PER_PAGE = 24;
+
+    // Image Resources
     private static final String PLACEHOLDER_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAACgCAQAAAB1z2qZAAABV0lEQVR42u3TQQ0AIAwEsf/uRgzI+HAKW97bA0BMA0D8gEAAIgERgIhARAASBAmIAEQAIgERgIhARAASBAmIAEQAIgERgIhARAASBAmIAEQAIgERgIhARAASBAmIAEQAIgERgIhARAYAMAgP4V70XgWqQAAAAASUVORK5CYII=";
     private String defaultImageUrl;
 
@@ -39,90 +44,150 @@ public class BookGalleryTab extends StackPane { // Đổi sang StackPane để c
         this.library = library;
         this.resizeConverter = resizeConverter;
 
-        this.setPadding(new Insets(10));
-
         // Chuẩn bị URL ảnh mặc định
         URL resource = getClass().getResource("/resources/default_cover.png");
         if (resource == null) resource = getClass().getResource("/default_cover.png");
         this.defaultImageUrl = (resource != null) ? resource.toExternalForm() : PLACEHOLDER_URL;
 
+        // --- KHỞI TẠO UI MỘT LẦN DUY NHẤT ---
+        this.setPadding(new Insets(10));
+        this.setSpacing(10);
+
+        // 1. FlowPane (Nơi chứa sách)
+        galleryFlowPane = new FlowPane();
+        galleryFlowPane.setHgap(20);
+        galleryFlowPane.setVgap(20);
+        galleryFlowPane.setPadding(new Insets(20));
+        galleryFlowPane.setAlignment(Pos.TOP_LEFT);
+
+        // 2. ScrollPane (Khung cuộn cố định)
+        mainScrollPane = new ScrollPane(galleryFlowPane);
+        mainScrollPane.setFitToWidth(true); //
+        mainScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); // Chặn trượt ngang tuyệt đối
+        mainScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        mainScrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+        // Ràng buộc chiều rộng để FlowPane xuống dòng đúng lúc
+        galleryFlowPane.prefWrapLengthProperty().bind(mainScrollPane.widthProperty().subtract(40)); // Trừ hao padding
+
+        // Để ScrollPane chiếm hết không gian dọc còn lại
+        VBox.setVgrow(mainScrollPane, Priority.ALWAYS);
+
+        // 3. Pagination (Thanh điều hướng)
+        pagination = new Pagination();
+        pagination.setMaxHeight(60); // Giới hạn chiều cao
+        pagination.setPageFactory(this::handlePageChange); // Sự kiện đổi trang
+
+        // Add vào layout chính
+        this.getChildren().addAll(mainScrollPane, pagination);
+
+        // Load dữ liệu lần đầu
         updateBookGallery();
     }
 
     public String getPlaceholderBase64Url() { return PLACEHOLDER_URL; }
 
+    // =============================================================
+    // LOGIC CẬP NHẬT DỮ LIỆU
+    // =============================================================
     public void updateBookGallery() {
-        this.getChildren().clear();
-
         this.cachedBooks = library.getBooks();
 
-        if (cachedBooks.isEmpty()) {
-            this.getChildren().add(new Label(LanguageManager.getText("msg.library_empty")));
+        if (cachedBooks == null || cachedBooks.isEmpty()) {
+            galleryFlowPane.getChildren().clear();
+            galleryFlowPane.getChildren().add(new Label(LanguageManager.getText("msg.library_empty")));
+            pagination.setVisible(false);
             return;
         }
 
+        // Tính toán số trang
         int pageCount = (int) Math.ceil((double) cachedBooks.size() / ITEMS_PER_PAGE);
+        pagination.setPageCount(pageCount);
+        pagination.setVisible(true);
 
-        // Khởi tạo Pagination
-        pagination = new Pagination(pageCount, 0);
-        pagination.setPageFactory(this::createPage);
-
-        // Quan trọng: Pagination phải giãn full màn hình
-        pagination.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-
-        this.getChildren().add(pagination);
+        // Reset về trang 0 (nó sẽ tự gọi handlePageChange)
+        pagination.setCurrentPageIndex(0);
+        // Nếu đang ở trang 0 rồi thì set lại để force update
+        if (pagination.getCurrentPageIndex() == 0) {
+            updateGalleryView(0);
+        }
     }
 
     /**
-     * Tạo nội dung trang (SỬA LỖI LAYOUT TẠI ĐÂY)
+     * Hàm này được Pagination gọi khi người dùng bấm số trang.
+     * Trả về VBox rỗng vì ta không dùng vùng hiển thị mặc định của Pagination.
      */
-    private Node createPage(int pageIndex) {
-        // 1. FlowPane chứa các thẻ sách
-        FlowPane pageBox = new FlowPane();
-        pageBox.setHgap(20); // Khoảng cách ngang giữa các sách
-        pageBox.setVgap(20); // Khoảng cách dọc
-        pageBox.setPadding(new Insets(20));
-        pageBox.setAlignment(Pos.TOP_LEFT);
-
-        // QUAN TRỌNG: Để FlowPane tự động xuống dòng khi hết chỗ
-        pageBox.setPrefWrapLength(100); // Giá trị nhỏ để nó phụ thuộc vào container cha
-
-        // 2. ScrollPane bao bên ngoài (Để cuộn nếu nhiều sách)
-        ScrollPane scrollPane = new ScrollPane(pageBox);
-        scrollPane.setFitToWidth(true); // <--- CHÌA KHÓA: Bắt buộc FlowPane giãn theo chiều ngang của màn hình
-        scrollPane.setFitToHeight(true);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
-
-        // Logic tạo thẻ sách (Giữ nguyên)
-        int start = pageIndex * ITEMS_PER_PAGE;
-        int end = Math.min(start + ITEMS_PER_PAGE, cachedBooks.size());
-
-        for (int i = start; i < end; i++) {
-            Book book = cachedBooks.get(i);
-            VBox card = createBookCard(book, null);
-            pageBox.getChildren().add(card);
+    private Node handlePageChange(int pageIndex) {
+        if (cachedBooks != null && !cachedBooks.isEmpty()) {
+            updateGalleryView(pageIndex);
         }
+        return new VBox(); // Trả về node rỗng (Dummy)
+    }
 
-        // Logic load ảnh bất đồng bộ (Giữ nguyên)
+    /**
+     * Logic vẽ lại các cuốn sách vào FlowPane cố định
+     */
+    private void updateGalleryView(int pageIndex) {
+        // Đảm bảo chạy trên UI Thread
+        Platform.runLater(() -> {
+            galleryFlowPane.getChildren().clear();
+            mainScrollPane.setVvalue(0); // Cuộn lên đầu trang
+
+            int start = pageIndex * ITEMS_PER_PAGE;
+            int end = Math.min(start + ITEMS_PER_PAGE, cachedBooks.size());
+
+            // 1. Tạo khung xương (Skeleton) với ảnh Placeholder trước cho mượt
+            for (int i = start; i < end; i++) {
+                Book book = cachedBooks.get(i);
+                VBox card = createBookCard(book, null); // Ảnh null sẽ dùng placeholder
+                galleryFlowPane.getChildren().add(card);
+            }
+
+            // 2. Load ảnh thật ở chế độ nền (Background)
+            startImageLoadingTask(start, end);
+        });
+    }
+
+    // =============================================================
+    // LOGIC LOAD ẢNH BẤT ĐỒNG BỘ (Background Thread)
+    // =============================================================
+    private void startImageLoadingTask(int start, int end) {
         Task<Void> loadImagesTask = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                for (int i = 0; i < pageBox.getChildren().size(); i++) {
+                // Duyệt qua các node vừa được thêm vào FlowPane
+                // Lưu ý: galleryFlowPane.getChildren() truy cập từ thread khác có thể nguy hiểm
+                // nhưng vì ta chỉ đọc index tương ứng nên tạm ổn.
+                // Cách an toàn hơn là load ảnh xong mới update UI.
+
+                List<Node> currentCards = galleryFlowPane.getChildren();
+                int size = currentCards.size();
+
+                for (int i = 0; i < size; i++) {
+                    if (isCancelled()) break;
+
                     int bookIndex = start + i;
                     if (bookIndex >= cachedBooks.size()) break;
 
                     Book book = cachedBooks.get(bookIndex);
-                    Node node = pageBox.getChildren().get(i);
 
-                    if (node instanceof VBox card) {
-                        Image img = loadImageForBook(book, defaultImageUrl);
-                        Platform.runLater(() -> {
-                            if (!card.getChildren().isEmpty() && card.getChildren().get(0) instanceof ImageView view) {
-                                view.setImage(img);
+                    // Kiểm tra cache hoặc load từ file
+                    Image img = loadImageForBook(book, defaultImageUrl);
+
+                    // Cập nhật lại UI khi đã có ảnh
+                    int finalI = i;
+                    Platform.runLater(() -> {
+                        if (finalI < currentCards.size()) {
+                            Node node = currentCards.get(finalI);
+                            if (node instanceof VBox card && !card.getChildren().isEmpty()) {
+                                if (card.getChildren().get(0) instanceof ImageView view) {
+                                    view.setImage(img); // Thay thế placeholder bằng ảnh thật
+                                }
                             }
-                        });
-                        Thread.sleep(10); // Nghỉ ít hơn để load nhanh hơn
-                    }
+                        }
+                    });
+
+                    Thread.sleep(5); // Nghỉ cực ngắn để không chiếm dụng CPU
                 }
                 return null;
             }
@@ -131,10 +196,11 @@ public class BookGalleryTab extends StackPane { // Đổi sang StackPane để c
         Thread thread = new Thread(loadImagesTask);
         thread.setDaemon(true);
         thread.start();
-
-        return scrollPane;
     }
 
+    // =============================================================
+    // HELPERS (Giữ nguyên logic cũ)
+    // =============================================================
     private Image loadImageForBook(Book book, String defaultUrl) {
         String fileName = book.getImagePath();
         if (fileName != null && BackEnd.Utils.ImageCache.contains(fileName)) {
@@ -156,9 +222,10 @@ public class BookGalleryTab extends StackPane { // Đổi sang StackPane để c
 
     private VBox createBookCard(Book book, Image image) {
         VBox bookBox = new VBox(5);
-        bookBox.setPrefWidth(140); // Chiều rộng cố định cho mỗi thẻ
+        bookBox.setPrefWidth(140);
         bookBox.getStyleClass().add("gallery-book-box");
 
+        // Nếu chưa có ảnh, dùng Placeholder
         if (image == null) image = new Image(defaultImageUrl, 120, 160, true, true);
 
         ImageView imageView = new ImageView(image);
@@ -171,7 +238,6 @@ public class BookGalleryTab extends StackPane { // Đổi sang StackPane để c
         nameLabel.setMaxWidth(130);
         nameLabel.getStyleClass().add("book-name-label");
 
-        // Tooltip để xem tên đầy đủ nếu bị cắt
         Tooltip tooltip = new Tooltip(book.getName());
         Tooltip.install(bookBox, tooltip);
 

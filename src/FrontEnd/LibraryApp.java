@@ -1,6 +1,8 @@
 package FrontEnd;
 
+import BackEnd.Book.Book;
 import BackEnd.LibraryQ.Library;
+import BackEnd.User.User;
 import BackEnd.Utils.BarcodeScannerHandler;
 import BackEnd.Utils.LanguageManager;
 import Database.DatabaseManager;
@@ -23,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class LibraryApp extends Application {
+    public static final String ADMIN_PASSWORD = "admin";
 
     // --- CORE SYSTEM ---
     private Library library;
@@ -45,10 +48,13 @@ public class LibraryApp extends Application {
 
     // Shared UI Component
     private final FlowPane bookFlowPane = new FlowPane();
+    // cờ galerry
+    private boolean galleryDirty = true;
 
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
+
         showSplashScreen();
     }
 
@@ -57,7 +63,7 @@ public class LibraryApp extends Application {
     // ========================================================================
     private void showSplashScreen() {
         ProgressIndicator spinner = new ProgressIndicator();
-        Label statusLabel = new Label("Đang khởi động hệ thống...");
+        Label statusLabel = new Label("Starting system...");
         statusLabel.setStyle("-fx-text-fill: #2c3e50; -fx-font-weight: bold; -fx-font-size: 14px;");
 
         VBox splashLayout = new VBox(20, spinner, statusLabel);
@@ -74,14 +80,16 @@ public class LibraryApp extends Application {
         Task<Void> initTask = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                updateMessage("Kết nối cơ sở dữ liệu...");
+                updateMessage("\n" +
+                        "Database connecting...");
                 DatabaseManager.initializeDatabase();
 
-                updateMessage("Khởi động Core System...");
+                updateMessage("Start the Core System...");
                 library = new Library();
+                initializeData();
                 BackEnd.Utils.LicenseManager.init(library);
 
-                updateMessage("Đang tải dữ liệu...");
+                updateMessage("Loading data...");
                 library.getBookDAO().reloadCache(); // Pre-load cache
 
                 Thread.sleep(800); // Delay giả lập (nếu cần)
@@ -101,7 +109,7 @@ public class LibraryApp extends Application {
             splashStage.close();
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Critical Error");
-            alert.setHeaderText("Lỗi khởi động");
+            alert.setHeaderText("ERROR, SORY!");
             alert.setContentText(initTask.getException().getMessage());
             alert.showAndWait();
         });
@@ -124,6 +132,7 @@ public class LibraryApp extends Application {
 
         // Dựng giao diện (Hàm này tách riêng để gọi lại khi đổi ngôn ngữ)
         initLayout();
+
 
         primaryStage.setScene(scene);
         primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/resources/iconLib.ico")));
@@ -200,26 +209,29 @@ public class LibraryApp extends Application {
         refreshAllUIComponents();
     }
 
+
     // ========================================================================
     // 3. ORCHESTRATOR (HÀM ĐIỀU PHỐI)
     // ========================================================================
     private void refreshAllUIComponents() {
         Platform.runLater(() -> {
-            // 1. Refresh Backend Cache
-            if (library != null) library.getBookDAO().reloadCache();
-
-            // 2. Refresh từng Tab
             if (homeTab != null) homeTab.refreshData();
-            if (bookGalleryTab != null) bookGalleryTab.updateBookGallery();
+            if (bookGalleryTab != null && galleryDirty) {
+                bookGalleryTab.updateBookGallery();
+                galleryDirty = false;
+            }
             if (bookManagementTab != null) bookManagementTab.refreshTable();
             if (userTab != null) userTab.refreshData();
-            if (borrowReturnTab != null) borrowReturnTab.refreshData();
+            if (borrowReturnTab != null){
+                borrowReturnTab.refreshData();
+                galleryDirty = true;
+            }
             if (statisticTab != null) statisticTab.refreshData();
 
-            // Cập nhật Lịch sử (Để thấy ngay khi trả sách)
             if (historyTab != null) historyTab.reloadHistoryFromDB();
         });
     }
+
 
     // ========================================================================
     // 4. HELPER METHODS & UI COMPONENTS
@@ -273,15 +285,21 @@ public class LibraryApp extends Application {
         });
     }
 
+    // Bổ sung cache cho réize ảnh
+    private final java.util.Map<String, Image> imageCache = new java.util.HashMap<>();
     public Image convertAndResize(BufferedImage originalImage) {
         if (originalImage == null) return null;
+
         try {
-            BufferedImage resizedImage = ImageResizer.resizeImage(originalImage, 120, 160);
+            BufferedImage resized = ImageResizer.resizeImage(originalImage, 120, 160);
             ByteArrayOutputStream os = new ByteArrayOutputStream();
-            ImageIO.write(resizedImage, "png", os);
+            ImageIO.write(resized, "png", os);
             return new Image(new ByteArrayInputStream(os.toByteArray()));
-        } catch (IOException e) { return null; }
+        } catch (IOException e) {
+            return null;
+        }
     }
+
 
     private void runAutoEmailCheck() {
         try {
@@ -293,6 +311,56 @@ public class LibraryApp extends Application {
                 Thread.sleep(2000);
             }
         } catch (Exception ignored) {}
+    }
+
+    //===========================================================================================
+    private void initializeData() {
+        if (library.getListUsers().isEmpty() || library.getBooks().isEmpty()) {
+            System.out.println("-> Init Demo Data.");
+            // --- THÊM 20 CUỐN SÁCH (CNTT & Đời Sống) ---
+            library.addBook(new Book("B001", "Clean Code", "Robert C. Martin", "2008"));
+            library.addBook(new Book("B002", "Effective Java", "Joshua Bloch", "2018"));
+            library.addBook(new Book("B003", "Head First Design Patterns", "Eric Freeman", "2004"));
+            library.addBook(new Book("B004", "The Pragmatic Programmer", "Andrew Hunt", "1999"));
+            library.addBook(new Book("B005", "Introduction to Algorithms", "Thomas H. Cormen", "2009"));
+            library.addBook(new Book("B006", "Code Complete", "Steve McConnell", "2004"));
+            library.addBook(new Book("B007", "Refactoring", "Martin Fowler", "1999"));
+            library.addBook(new Book("B008", "Design Patterns", "Erich Gamma", "1994"));
+            library.addBook(new Book("B009", "The Mythical Man-Month", "Frederick Brooks", "1975"));
+            library.addBook(new Book("B010", "Java Concurrency in Practice", "Brian Goetz", "2006"));
+            library.addBook(new Book("B011", "Đắc Nhân Tâm", "Dale Carnegie", "2019"));
+            library.addBook(new Book("B012", "Nhà Giả Kim", "Paulo Coelho", "2017"));
+            library.addBook(new Book("B013", "Tuổi Trẻ Đáng Giá Bao Nhiêu", "Rosie Nguyễn", "2016"));
+            library.addBook(new Book("B014", "Cà Phê Cùng Tony", "Tony Buổi Sáng", "2015"));
+            library.addBook(new Book("B015", "Mắt Biếc", "Nguyễn Nhật Ánh", "2018"));
+            library.addBook(new Book("B016", "Dế Mèn Phiêu Lưu Ký", "Tô Hoài", "2020"));
+            library.addBook(new Book("B017", "Harry Potter và Hòn Đá Phù Thủy", "J.K. Rowling", "2015"));
+            library.addBook(new Book("B018", "Sherlock Holmes Toàn Tập", "Arthur Conan Doyle", "2018"));
+            library.addBook(new Book("B019", "Rừng Na Uy", "Haruki Murakami", "2019"));
+            library.addBook(new Book("B020", "Sapiens: Lược Sử Loài Người", "Yuval Noah Harari", "2017"));
+
+// --- THÊM 20 NGƯỜI DÙNG (Sinh viên) ---
+            library.addUser(new User("U001", "Nguyễn Văn An"));
+            library.addUser(new User("U002", "Trần Thị Bích"));
+            library.addUser(new User("U003", "Lê Hoàng Cường"));
+            library.addUser(new User("U004", "Phạm Minh Duy"));
+            library.addUser(new User("U005", "Hoàng Thị Em"));
+            library.addUser(new User("U006", "Vũ Văn Dũng"));
+            library.addUser(new User("U007", "Đặng Thị Gấm"));
+            library.addUser(new User("U008", "Bùi Văn Hùng"));
+            library.addUser(new User("U009", "Đỗ Thị Inh"));
+            library.addUser(new User("U010", "Hồ Văn Khoa"));
+            library.addUser(new User("U011", "Ngô Thị Lan"));
+            library.addUser(new User("U012", "Dương Văn Mạnh"));
+            library.addUser(new User("U013", "Lý Thị Ngọc"));
+            library.addUser(new User("U014", "Trương Văn Oanh"));
+            library.addUser(new User("U015", "Võ Thị Phương"));
+            library.addUser(new User("U016", "Đinh Văn Quân"));
+            library.addUser(new User("U017", "Mai Thị Quỳnh"));
+            library.addUser(new User("U018", "Cao Văn Sơn"));
+            library.addUser(new User("U019", "Phan Thị Trang"));
+            library.addUser(new User("U020", "Lâm Văn Uy"));
+        }
     }
 
     public static void main(String[] args) {
