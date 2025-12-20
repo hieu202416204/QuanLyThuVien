@@ -31,7 +31,6 @@ public class BookDAO {
      */
     public synchronized void reloadCache() {
         cachedBooks = new CopyOnWriteArrayList<>(getAllBooksFromDB());
-        System.out.println("⚡ [Cache] Đã tải " + cachedBooks.size() + " cuốn sách vào bộ nhớ RAM.");
     }
 
     // =======================================================
@@ -218,10 +217,10 @@ public class BookDAO {
         return new ArrayList<>(cachedBooks);
     }
 
-    // Sort, Map theo yêu cầu (Ví dụ: Lấy top sách mượn nhiều nhất từ Cache)
     public List<Book> getBooksSortedByBorrowCount() {
+        reloadCache();
         return cachedBooks.stream()
-                .sorted(Comparator.comparingInt(Book::getSoLuotMuon).reversed()) // Sort trên RAM
+                .sorted(Comparator.comparingInt(Book::getSoLuotMuon).reversed())
                 .collect(Collectors.toList());
     }
 

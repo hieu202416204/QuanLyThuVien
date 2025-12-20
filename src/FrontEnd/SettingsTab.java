@@ -604,7 +604,7 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         inputGroup.setAlignment(Pos.CENTER_LEFT);
 
         licenseField = new TextField();
-        licenseField.setPromptText("Enter the activation codet (VD: KEY-PRO-2025)");
+        licenseField.setPromptText("Enter the activation code (e.g: KEY-PRO-2025)");
         licenseField.setPrefWidth(250);
         // Load key cũ
         licenseField.setText(library.getSettingsDAO().getSetting("license_key"));
@@ -617,17 +617,17 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
 
         Label lblNote = new Label("Free: MAXIMUM " + BackEnd.Utils.LicenseManager.LIMIT_BOOKS_FREE + " books.\n" +
                 "Plus: Email + 1000 books.\n" +
-                "Pro: Full options + Backup + NO LIMITED.");
+                "Pro: Full options + Backup + UNLIMITED.");
         lblNote.setStyle("-fx-font-size: 11px; -fx-text-fill: #7f8c8d;");
 
         //  HIỂN THỊ MAC ADDRESS
         String currentMac = BackEnd.Utils.HardwareID.getMacAddress();
         String storedMac = library.getSettingsDAO().getSetting("hardware_id");
 
-        lblCurrentMac = new Label("ID máy hiện tại: " + currentMac);
+        lblCurrentMac = new Label("Current Device ID: " + currentMac);
         lblCurrentMac.setStyle("-fx-font-size: 11px; -fx-text-fill: #34495e;");
 
-        Label lblStoredMac = new Label("ID máy đã khóa: " + (storedMac != null ? storedMac : "Chưa khóa"));
+        Label lblStoredMac = new Label("Regidtered Device ID: " + (storedMac != null ? storedMac : "Chưa khóa"));
         lblStoredMac.setStyle("-fx-font-size: 11px; -fx-text-fill: #e74c3c;");
         box.getChildren().addAll(header, lblCurrentLevel, inputGroup, lblNote, lblCurrentMac,lblStoredMac);
         return box;
@@ -643,10 +643,10 @@ public class SettingsTab extends ScrollPane { // Dùng ScrollPane để tránh b
         BackEnd.Utils.LicenseManager.init(library);
 
         // Cập nhật Label
-        lblCurrentLevel.setText("Cấp độ hiện tại: " + BackEnd.Utils.LicenseManager.getLevelName());
+        lblCurrentLevel.setText("Current Level: " + BackEnd.Utils.LicenseManager.getLevelName());
 
-        FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION, "Thành công",
-                "Đã cập nhật License thành: " + BackEnd.Utils.LicenseManager.getLevelName() +
+        FrontEnd.LibraryApp.showAlert(Alert.AlertType.INFORMATION, "Success!",
+                "Updated Level: " + BackEnd.Utils.LicenseManager.getLevelName() +
                         "\nVui lòng khởi động lại ứng dụng để áp dụng đầy đủ thay đổi.");
     }
 
