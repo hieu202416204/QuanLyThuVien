@@ -1,7 +1,6 @@
 -injars C:/Users/hieuv/IdeaProjects/QuanLyThuVien/out/artifacts/QuanLyThuVien_jar/QuanLyThuVien.jar
 -outjars C:/Users/hieuv/IdeaProjects/QuanLyThuVien/out/artifacts/QuanLyThuVien_jar/QuanLyThuVien-obf.jar
 
-
 -dontshrink
 -dontoptimize
 -dontwarn
