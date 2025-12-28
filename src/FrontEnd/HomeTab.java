@@ -153,9 +153,9 @@ public class HomeTab extends ScrollPane {
         menuAuto.setGraphic(timerIcon);
 
         ToggleGroup group = new ToggleGroup();
-        RadioMenuItem r20 = createIntervalItem("Every 20 seconds", 20000, group);
-        RadioMenuItem r40 = createIntervalItem("Every 40 seconds", 40000, group);
-        RadioMenuItem r60 = createIntervalItem("Every 60 seconds", 60000, group);
+        RadioMenuItem r20 = createIntervalItem("Every 1 minutes", 60000, group);
+        RadioMenuItem r40 = createIntervalItem("Every 3 minutes", 60000*3, group);
+        RadioMenuItem r60 = createIntervalItem("Every  5 minutes", 60000*5, group);
         r20.setSelected(true);
 
         menuAuto.getItems().addAll(r20, r40, r60);
@@ -193,6 +193,13 @@ public class HomeTab extends ScrollPane {
         Thread bgThread = new Thread(() -> {
             while (isRunning.get()) {
                 try {
+                    // --- TỐI ƯU 1: CHỈ CHẠY KHI TAB ĐANG HIỂN THỊ ---
+                    // Nếu Tab không hiển thị hoặc Scene chưa sẵn sàng -> Ngủ đông
+                    if (this.getScene() == null || !this.isVisible()) {
+                        Thread.sleep(2000); // Kiểm tra lại sau 2s
+                        continue; // Bỏ qua lần update này
+                    }
+
                     // 1. Thu thập dữ liệu UI
                     final LocalDate[] selectedDate = {LocalDate.now()};
                     final String[] selectedView = {"Week View"};
@@ -213,7 +220,7 @@ public class HomeTab extends ScrollPane {
                     // 3. Update UI
                     Platform.runLater(() -> updateUI(data));
 
-                    // 4. Nghỉ theo thời gian đã cài đặt (Dùng biến refreshInterval)
+                    // 4. Nghỉ ngơi
                     Thread.sleep(refreshInterval.get());
 
                 } catch (InterruptedException e) {
@@ -221,10 +228,12 @@ public class HomeTab extends ScrollPane {
                     break;
                 } catch (Exception e) {
                     e.printStackTrace();
+                    try { Thread.sleep(5000); } catch (InterruptedException ex) {} // Nếu lỗi thì nghỉ 5s rồi thử lại
                 }
             }
         });
         bgThread.setDaemon(true);
+        bgThread.setName("HomeTab-AutoRefresh"); // Đặt tên thread để dễ debug
         bgThread.start();
     }
     // Hàm tính toán dữ liệu (Nặng - Chạy ngầm)

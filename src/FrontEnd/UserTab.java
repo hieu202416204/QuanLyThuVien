@@ -30,7 +30,7 @@ public class UserTab extends VBox {
     private final int USER_PAGE_SIZE = 100;
 
     // Input Fields
-    private TextField idField, nameField, emailField;
+    private TextField idField, nameField, emailField, personalIdField;
     private File selectedUserAvatar = null;
     private Label lblAvatarStatus;
 
@@ -99,8 +99,11 @@ public class UserTab extends VBox {
         TableColumn<User, String> colEmail = new TableColumn<>(LanguageManager.getText("col.email"));
         colEmail.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getEmail()));
         colEmail.setPrefWidth(250);
+        TableColumn<User, String> colPersonalIdNumber = new TableColumn<>(LanguageManager.getText("col.personalIdNumber"));
+        colPersonalIdNumber.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getPersonalIdNumber()));
+        colPersonalIdNumber.setPrefWidth(250);
 
-        userTable.getColumns().setAll(colId, colName, colEmail);
+        userTable.getColumns().setAll(colId, colName, colEmail, colPersonalIdNumber);
         userTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
@@ -108,7 +111,7 @@ public class UserTab extends VBox {
         idField = new TextField(); idField.setPromptText(LanguageManager.getText("col.id")); idField.setPrefWidth(120);
         nameField = new TextField(); nameField.setPromptText(LanguageManager.getText("col.name.user")); nameField.setPrefWidth(200);
         emailField = new TextField(); emailField.setPromptText(LanguageManager.getText("col.email")); emailField.setPrefWidth(200);
-
+        personalIdField = new TextField(); personalIdField.setPromptText(LanguageManager.getText("col.personalIdNumber")); personalIdField.setPrefWidth(200);
         Button btnAvatar = new Button("📷 Avatar");
         lblAvatarStatus = new Label(LanguageManager.getText("label.not_selected"));
         btnAvatar.setOnAction(e -> {
@@ -121,7 +124,7 @@ public class UserTab extends VBox {
         FlowPane pane = new FlowPane(15, 10);
         pane.setPadding(new Insets(10));
         pane.getStyleClass().add("input-panel");
-        pane.getChildren().addAll(idField, nameField, emailField, new HBox(5, btnAvatar, lblAvatarStatus));
+        pane.getChildren().addAll(idField, nameField, emailField,personalIdField, new HBox(5, btnAvatar, lblAvatarStatus));
         return pane;
     }
 
@@ -162,6 +165,7 @@ public class UserTab extends VBox {
                 idField.setText(newVal.getId());
                 nameField.setText(newVal.getName());
                 emailField.setText(newVal.getEmail());
+                personalIdField.setText(newVal.getPersonalIdNumber());
                 idField.setEditable(false);
             }
         });
@@ -216,6 +220,7 @@ public class UserTab extends VBox {
         String uId = idField.getText().trim();
         String uName = nameField.getText().trim();
         String uEmail = emailField.getText().trim();
+        String uPersonalId = personalIdField.getText().trim();
         String avatarPath = null;
 
         if (selectedUserAvatar != null) {
@@ -223,7 +228,7 @@ public class UserTab extends VBox {
             catch (Exception ex) { ex.printStackTrace(); }
         }
 
-        if (library.getUserDAO().addUser(new User(uId, uName, uEmail, avatarPath))) {
+        if (library.getUserDAO().addUser(new User(uId, uName, uEmail, avatarPath, uPersonalId))) {
             refreshData();
             showAlert(Alert.AlertType.INFORMATION, "Success", LanguageManager.getText("msg.user_added"));
             if (!uEmail.isEmpty()) {
@@ -240,6 +245,7 @@ public class UserTab extends VBox {
         if (u != null) {
             u.setName(nameField.getText());
             u.setEmail(emailField.getText());
+            u.setPersonalIdNumber(personalIdField.getText());
             if (library.getUserDAO().updateUser(u)) {
                 userTable.refresh();
                 showAlert(Alert.AlertType.INFORMATION, "Success", "User Updated");
@@ -315,7 +321,7 @@ public class UserTab extends VBox {
     }
 
     private void clearFields() {
-        idField.clear(); nameField.clear(); emailField.clear();
+        idField.clear(); nameField.clear(); emailField.clear(); personalIdField.clear();
         idField.setEditable(true);
         selectedUserAvatar = null;
         lblAvatarStatus.setText(LanguageManager.getText("label.not_selected"));

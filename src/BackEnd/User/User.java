@@ -11,6 +11,7 @@ public class User {
     private String email;
     private String avatarPath;
     private LocalDate creatAt;
+    private String personalIdNumber;
 
     public User(){
         this.creatAt = LocalDate.now();
@@ -34,10 +35,26 @@ public class User {
         this.avatarPath = avatarPath;
         this.creatAt = LocalDate.now();
     }
-
+    public User(String id, String name, String email, String avatarPath, String personalIdNumber){
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.avatarPath = avatarPath;
+        this.creatAt = LocalDate.now();
+        this.personalIdNumber = personalIdNumber;
+    }
     // =======================================================
     // GETTER / SETTER CƠ BẢN
     // =======================================================
+
+
+    public void setPersonalIdNumber(String personalIdNumber) {
+        this.personalIdNumber = personalIdNumber;
+    }
+
+    public String getPersonalIdNumber() {
+        return this.personalIdNumber;
+    }
 
     public void setId(String id) {
         this.id = id;

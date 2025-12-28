@@ -84,7 +84,8 @@ public class DatabaseManager {
                     + "email TEXT,"
                     + "avatarPath TEXT,"
                     + "created_at TEXT,"
-                    + "soSachDaMuon INTEGER DEFAULT 0"
+                    + "soSachDaMuon INTEGER DEFAULT 0,"
+                    + "personalIdNumber TEXT"
                     + ");";
             stmt.execute(sqlUsers);
 

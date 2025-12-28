@@ -19,6 +19,7 @@ public class UserDAO {
         user.setName(rs.getString("name"));
         user.setEmail(rs.getString("email"));
         user.setAvatarPath(rs.getString("avatarPath"));
+        user.setPersonalIdNumber("personalIdNumber");
         // Sử dụng setter đặc biệt để đọc số sách đã mượn từ DB
         user.setSoSachDaMuonFromDB(rs.getInt("soSachDaMuon"));
         // Đọc ngày tạo
@@ -38,7 +39,7 @@ public class UserDAO {
      */
     public boolean addUser(User user) {
         // soSachDaMuon mặc định là 0 khi thêm mới
-        String sql = "INSERT INTO users (id, name, email, avatarPath,created_at, soSachDaMuon) VALUES (?, ?, ?, ?, ?, 0)";
+        String sql = "INSERT INTO users (id, name, email, avatarPath,created_at, soSachDaMuon, personalIdNumber) VALUES (?, ?, ?, ?, ?, 0, ?)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -47,6 +48,7 @@ public class UserDAO {
             pstmt.setString(3, user.getEmail());
             pstmt.setString(4, user.getAvatarPath());
             pstmt.setString(5, user.getCreatedAt().toString());
+            pstmt.setString(6, user.getPersonalIdNumber());
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -204,14 +206,15 @@ public class UserDAO {
      * Cập nhật thông tin User (không cho sửa ID)
      */
     public boolean updateUser(User user) {
-        String sql = "UPDATE users SET name = ?, email = ?, avatarPath = ? WHERE id = ?";
+        String sql = "UPDATE users SET name = ?, email = ?, avatarPath = ?, personalIdNumber = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, user.getName());
             pstmt.setString(2, user.getEmail());
             pstmt.setString(3, user.getAvatarPath());
-            pstmt.setString(4, user.getId()); // WHERE ID
+            pstmt.setString(4, user.getPersonalIdNumber());
+            pstmt.setString(5, user.getId()); // WHERE ID
 
             int rowsAffected = pstmt.executeUpdate();
             return rowsAffected > 0;
