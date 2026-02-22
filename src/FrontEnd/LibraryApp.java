@@ -6,6 +6,10 @@ import BackEnd.User.User;
 import BackEnd.Utils.BarcodeScannerHandler;
 import BackEnd.Utils.LanguageManager;
 import Database.DatabaseManager;
+import FrontEnd.Controllers.SettingsTabController;
+import FrontEnd.Controllers.StatisticTabController;
+import FrontEnd.Views.SettingsTabView;
+import FrontEnd.Views.StatisticTabView;
 import XuLiAnh.ImageResizer;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -36,15 +40,21 @@ public class LibraryApp extends Application {
 
     // --- MODULES (TABS) ---
     // Khai báo biến toàn cục để có thể gọi refresh từ bên ngoài
-    private HomeTab homeTab;
-    private BookGalleryTab bookGalleryTab;
-    private BookManagementTab bookManagementTab;
-    private UserTab userTab;
-    private BorrowReturnTab borrowReturnTab;
-    private SearchTab searchTab;
-    private HistoryTab historyTab;
-    private StatisticTab statisticTab;
-    private SettingsTab settingsTab;
+    private FrontEnd.Views.HomeTabView homeTabView;
+    private FrontEnd.Controllers.HomeTabController homeTabController;    private FrontEnd.Views.BookGalleryTabView bookGalleryTabView;
+    private FrontEnd.Controllers.BookGalleryTabController bookGalleryTabController;
+    private FrontEnd.Views.BookManagementTabView bookManagementTabView;
+    private FrontEnd.Controllers.BookManagementTabController bookManagementTabController;
+    private FrontEnd.Views.UserTabView userTabView;
+    private FrontEnd.Controllers.UserTabController userTabController;    private FrontEnd.Views.BorrowReturnTabView borrowReturnTabView;
+    private FrontEnd.Controllers.BorrowReturnTabController borrowReturnTabController;
+    private FrontEnd.Views.SearchTabView searchTabView;
+    private FrontEnd.Controllers.SearchTabController searchTabController;    private FrontEnd.Views.HistoryTabView historyTabView;
+    private FrontEnd.Controllers.HistoryTabController historyTabController;
+    private StatisticTabView statisticTabView;
+    private StatisticTabController statisticTabController;
+    private SettingsTabView settingsTabView;
+    private SettingsTabController settingsTabController;
 
     // Shared UI Component
     private final FlowPane bookFlowPane = new FlowPane();
@@ -165,35 +175,51 @@ public class LibraryApp extends Application {
         TabPane tabPane = new TabPane();
         tabPane.getStyleClass().add("hidden-header-tab-pane");
 
-        homeTab = new HomeTab(library);
-        bookGalleryTab = new BookGalleryTab(library, bookFlowPane, this::convertAndResize);
-        bookManagementTab = new BookManagementTab(library, bookFlowPane, bookGalleryTab);
-        userTab = new UserTab(library);
-
+// Khởi tạo MVC cho HomeTab
+        homeTabView = new FrontEnd.Views.HomeTabView();
+        homeTabController = new FrontEnd.Controllers.HomeTabController(library, homeTabView);// Khởi tạo MVC cho BookGalleryTab
+        bookGalleryTabView = new FrontEnd.Views.BookGalleryTabView();
+        bookGalleryTabController = new FrontEnd.Controllers.BookGalleryTabController(library, bookGalleryTabView, this::convertAndResize);
+// Khởi tạo MVC cho BookManagementTab (Truyền galleryController vào)
+        bookManagementTabView = new FrontEnd.Views.BookManagementTabView();
+        bookManagementTabController = new FrontEnd.Controllers.BookManagementTabController(library, bookManagementTabView, bookGalleryTabController);
+// Khởi tạo MVC cho UserTab
+        userTabView = new FrontEnd.Views.UserTabView();
+        userTabController = new FrontEnd.Controllers.UserTabController(library, userTabView);
         // Truyền callback refreshAllUIComponents vào BorrowReturnTab
-        borrowReturnTab = new BorrowReturnTab(library, this::refreshAllUIComponents);
-
-        searchTab = new SearchTab(library);
-        historyTab = new HistoryTab(library);
-        statisticTab = new StatisticTab(library, this::refreshAllUIComponents);
-
+// Khởi tạo MVC cho BorrowReturnTab
+        borrowReturnTabView = new FrontEnd.Views.BorrowReturnTabView();
+        borrowReturnTabController = new FrontEnd.Controllers.BorrowReturnTabController(library, borrowReturnTabView, this::refreshAllUIComponents);
+// Khởi tạo MVC cho SearchTab
+        searchTabView = new FrontEnd.Views.SearchTabView();
+        searchTabController = new FrontEnd.Controllers.SearchTabController(library, searchTabView);// Khởi tạo MVC cho History Tab
+        historyTabView = new FrontEnd.Views.HistoryTabView();
+        historyTabController = new FrontEnd.Controllers.HistoryTabController(library, historyTabView);
+// Khởi tạo MVC cho StatisticTab
+        statisticTabView = new FrontEnd.Views.StatisticTabView();
+        statisticTabController = new FrontEnd.Controllers.StatisticTabController(library, statisticTabView, this::refreshAllUIComponents);
         // Settings Tab: Callback khi đổi ngôn ngữ là gọi lại initLayout()
-        settingsTab = new SettingsTab(library, scene, () -> {
-            System.out.println("Language changed -> Rebuilding Layout...");
-            initLayout();
-        }, isDarkMode);
+        // Khởi tạo MVC cho SettingsTab
+        settingsTabView = new FrontEnd.Views.SettingsTabView();
+        settingsTabController = new FrontEnd.Controllers.SettingsTabController(
+                library,
+                settingsTabView,
+                scene,
+                this::initLayout, // callback khi đổi ngôn ngữ
+                isDarkMode
+        );
 
         // 3. Thêm vào TabPane
         tabPane.getTabs().addAll(
-                new Tab(LanguageManager.getText("tab.home"), homeTab),
-                new Tab(LanguageManager.getText("tab.gallery"), bookGalleryTab),
-                new Tab(LanguageManager.getText("tab.manage_book"), bookManagementTab),
-                new Tab(LanguageManager.getText("tab.users"), userTab),
-                new Tab(LanguageManager.getText("tab.borrow"), borrowReturnTab),
-                new Tab(LanguageManager.getText("tab.search"), searchTab),
-                new Tab(LanguageManager.getText("tab.history"), historyTab),
-                new Tab(LanguageManager.getText("tab.stats"), statisticTab),
-                new Tab(LanguageManager.getText("tab.settings"), settingsTab)
+                new Tab(LanguageManager.getText("tab.home"), homeTabView),
+                new Tab(LanguageManager.getText("tab.gallery"), bookGalleryTabView),
+                new Tab(LanguageManager.getText("tab.manage_book"), bookManagementTabView),
+                new Tab(LanguageManager.getText("tab.users"), userTabView),
+                new Tab(LanguageManager.getText("tab.borrow"), borrowReturnTabView),
+                new Tab(LanguageManager.getText("tab.search"), searchTabView),
+                new Tab(LanguageManager.getText("tab.history"), historyTabView),
+                new Tab(LanguageManager.getText("tab.stats"), statisticTabView),
+                new Tab(LanguageManager.getText("tab.settings"), settingsTabView)
         );
 
         // 4. Tạo Navigation Bar
@@ -215,20 +241,20 @@ public class LibraryApp extends Application {
     // ========================================================================
     private void refreshAllUIComponents() {
         Platform.runLater(() -> {
-            if (homeTab != null) homeTab.refreshData();
-            if (bookGalleryTab != null && galleryDirty) {
-                bookGalleryTab.updateBookGallery();
+            if (homeTabController != null) homeTabController.refreshData();
+            if (bookGalleryTabController != null && galleryDirty) {
+                bookGalleryTabController.updateBookGallery();
                 galleryDirty = false;
             }
-            if (bookManagementTab != null) bookManagementTab.refreshTable();
-            if (userTab != null) userTab.refreshData();
-            if (borrowReturnTab != null){
-                borrowReturnTab.refreshData();
+            if (bookManagementTabController != null) bookManagementTabController.refreshTable();
+            if (userTabController != null) userTabController.refreshData();
+            if (borrowReturnTabController != null){
+                borrowReturnTabController.refreshData();
                 galleryDirty = true;
             }
-            if (statisticTab != null) statisticTab.refreshData();
+            if (statisticTabController != null) statisticTabController.refreshData();
 
-            if (historyTab != null) historyTab.reloadHistoryFromDB();
+            if (historyTabController != null) historyTabController.reloadHistoryFromDB();
         });
     }
 
