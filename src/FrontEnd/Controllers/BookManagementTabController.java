@@ -6,7 +6,7 @@ import BackEnd.Utils.LanguageManager;
 import FrontEnd.Views.BookManagementTabView;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
@@ -16,7 +16,7 @@ import java.io.File;
 import java.util.List;
 
 /**
- * CONTROLLER: Xử lý logic Thêm/Sửa/Xóa, Load dữ liệu, Tìm kiếm ISBN.
+ * CONTROLLER (TỐI ƯU HIỆU SUẤT CAO - SERVER SIDE PAGINATION)
  */
 public class BookManagementTabController {
 
@@ -24,8 +24,6 @@ public class BookManagementTabController {
     private final BookManagementTabView view;
     private final BookGalleryTabController galleryController;
 
-    // Data State
-    private final ObservableList<Book> masterData = FXCollections.observableArrayList();
     private static final int ROWS_PER_PAGE = 100;
     private File selectedUploadFile = null;
     private String existingFileName = null;
@@ -40,7 +38,6 @@ public class BookManagementTabController {
     }
 
     private void attachEvents() {
-        // Nút chức năng
         view.getAddBtn().setOnAction(e -> handleAddBook(false));
         view.getEditBtn().setOnAction(e -> handleEditBook());
         view.getDeleteBtn().setOnAction(e -> handleDeleteBook());
@@ -49,32 +46,35 @@ public class BookManagementTabController {
         view.getViewHistoryBtn().setOnAction(e -> handleViewBookHistory());
         view.getPrintBarcodeBtn().setOnAction(e -> handlePrintBookBarcode());
 
-        // Hình ảnh & ISBN
         view.getSelectImageBtn().setOnAction(e -> handleSelectImage());
         view.getIsbnField().setOnAction(e -> handleAutoFillBook());
         view.getAutoFillBtn().setOnAction(e -> handleAutoFillBook());
 
-        // Phân trang & Cập nhật danh sách
+        // Phân trang
         view.getPagination().setPageFactory(this::createPage);
-        masterData.addListener((javafx.collections.ListChangeListener<Book>) c -> updatePagination());
 
-        // Lắng nghe chọn dòng trong Bảng
         initializeSelectionListener();
     }
 
-    public void refreshTable() {
-        masterData.setAll(library.getBooks());
-        refreshCategoryList();
-        updatePagination();
-    }
+    // ========================================================
+    // LOGIC TẢI DỮ LIỆU TỐI ƯU (SERVER-SIDE PAGINATION)
+    // ========================================================
 
-    private void updatePagination() {
-        int pageCount = (int) Math.ceil((double) masterData.size() / ROWS_PER_PAGE);
+    public void refreshTable() {
+        // 1. Chỉ lấy TỔNG SỐ để tính trang (Mất 0.001s)
+        int totalBooks = library.getBookDAO().getTotalBookCount();
+        int pageCount = (int) Math.ceil((double) totalBooks / ROWS_PER_PAGE);
         view.getPagination().setPageCount(pageCount > 0 ? pageCount : 1);
 
+        refreshCategoryList();
+
+        // 2. Load trang hiện tại
         int currentPage = view.getPagination().getCurrentPageIndex();
-        if (currentPage >= pageCount) view.getPagination().setCurrentPageIndex(0);
-        else updateTablePage(currentPage);
+        if (currentPage >= pageCount) {
+            view.getPagination().setCurrentPageIndex(0); // Tự động trigger createPage
+        } else {
+            updateTablePage(currentPage);
+        }
     }
 
     private Node createPage(int pageIndex) {
@@ -83,15 +83,36 @@ public class BookManagementTabController {
     }
 
     private void updateTablePage(int pageIndex) {
-        int from = pageIndex * ROWS_PER_PAGE;
-        int to = Math.min(from + ROWS_PER_PAGE, masterData.size());
+        // Hiển thị trạng thái đang tải
+        view.getBookTable().getItems().clear();
+        view.getBookTable().setPlaceholder(new Label(LanguageManager.getText("msg.loading")));
 
-        if (from <= to && !masterData.isEmpty()) {
-            view.getBookTable().setItems(FXCollections.observableArrayList(masterData.subList(from, to)));
-        } else {
-            view.getBookTable().getItems().clear();
-        }
+        int offset = pageIndex * ROWS_PER_PAGE;
+
+        // Chạy ngầm việc query Database để không làm đơ giao diện
+        Task<List<Book>> loadTask = new Task<>() {
+            @Override
+            protected List<Book> call() {
+                // Chỉ lấy đúng 100 cuốn sách cho trang này
+                return library.getBookDAO().getBooksByPage(offset, ROWS_PER_PAGE);
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            List<Book> books = loadTask.getValue();
+            if (books.isEmpty()) {
+                view.getBookTable().setPlaceholder(new Label(LanguageManager.getText("msg.library_empty")));
+            } else {
+                view.getBookTable().setItems(FXCollections.observableArrayList(books));
+            }
+        });
+
+        new Thread(loadTask).start();
     }
+
+    // ========================================================
+    // CÁC HÀM XỬ LÝ (CRUD)
+    // ========================================================
 
     private void initializeSelectionListener() {
         view.getBookTable().getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> {
@@ -119,10 +140,9 @@ public class BookManagementTabController {
         });
     }
 
-    // --- CÁC HÀM LOGIC CHÍNH ---
-
     private void handleAddBook(boolean isSilent) {
-        if (!BackEnd.Utils.LicenseManager.canAddMoreBooks(library.getBooks().size())) {
+        int totalBooks = library.getBookDAO().getTotalBookCount();
+        if (!BackEnd.Utils.LicenseManager.canAddMoreBooks(totalBooks)) {
             if (!isSilent) showAlert(Alert.AlertType.WARNING, "License Limit", "Upgrade required.");
             return;
         }
@@ -331,23 +351,29 @@ public class BookManagementTabController {
         view.getIsbnField().requestFocus();
     }
 
+    /**
+     * Tự động sinh ID mới NHANH CHÓNG nhờ dùng lệnh SQL lấy ID lớn nhất
+     */
     private String generateNextBookId() {
-        List<Book> books = library.getBooks();
-        int maxId = 0;
-        for (Book b : books) {
-            if (b.getId().matches("^B\\d+$")) {
-                try {
-                    int num = Integer.parseInt(b.getId().substring(1));
-                    if (num > maxId) maxId = num;
-                } catch (Exception e) {}
-            }
+        String lastId = library.getBookDAO().getLastBookId();
+        int nextNum = 1;
+        if (lastId != null && lastId.matches("^B\\d+$")) {
+            try {
+                nextNum = Integer.parseInt(lastId.substring(1)) + 1;
+            } catch (Exception ignored) {}
         }
-        return String.format("B%03d", maxId + 1);
+        return String.format("B%03d", nextNum);
     }
 
     private void refreshCategoryList() {
-        List<String> cats = library.getBookDAO().getUniqueCategories();
-        view.getCategoryBox().setItems(FXCollections.observableArrayList(cats));
+        Task<List<String>> catTask = new Task<>() {
+            @Override
+            protected List<String> call() {
+                return library.getBookDAO().getUniqueCategories();
+            }
+        };
+        catTask.setOnSucceeded(e -> view.getCategoryBox().setItems(FXCollections.observableArrayList(catTask.getValue())));
+        new Thread(catTask).start();
     }
 
     private void showAlert(Alert.AlertType type, String title, String msg) {

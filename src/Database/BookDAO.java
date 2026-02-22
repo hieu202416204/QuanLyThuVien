@@ -242,13 +242,18 @@ public class BookDAO {
      * Sử dụng Stream trên Cache để cực nhanh, không cần query DB lại.
      */
     public List<String> getUniqueCategories() {
-        if (cachedBooks == null) reloadCache();
-        return cachedBooks.stream()
-                .map(Book::getCategory)       // Lấy trường category
-                .filter(c -> c != null && !c.isEmpty()) // Lọc bỏ null/rỗng
-                .distinct()                   // Lọc trùng
-                .sorted()                     // Sắp xếp A-Z
-                .collect(Collectors.toList());
+        List<String> categories = new ArrayList<>();
+        String sql = "SELECT DISTINCT category FROM books WHERE category IS NOT NULL AND category != '' ORDER BY category";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                categories.add(rs.getString(1));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return categories;
     }
 
     // --- 5. TÌM KIẾM TỪ KHÓA TỐI ƯU (ADVANCED SEARCH) ---
@@ -272,5 +277,58 @@ public class BookDAO {
                             (b.getYear() != null && b.getYear().contains(lowerKey));
                 })
                 .collect(Collectors.toList());
+    }
+    // =======================================================
+    // PHÂN TRANG (PAGINATION) - TỐI ƯU HÓA DỮ LIỆU LỚN
+    // =======================================================
+
+    /**
+     * Lấy tổng số lượng sách trong DB
+     */
+    public int getTotalBookCount() {
+        String sql = "SELECT COUNT(id) FROM books";
+        try (Connection conn = DatabaseManager.getConnection();
+             java.sql.Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
+     * Lấy danh sách sách theo trang
+     */
+    public List<Book> getBooksByPage(int offset, int limit) {
+        List<Book> list = new ArrayList<>();
+        String sql = "SELECT * FROM books ORDER BY id LIMIT ? OFFSET ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, limit);
+            pstmt.setInt(2, offset);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(extractBookFromResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    /**
+     * Lấy ID sách lớn nhất (VD: B099 -> lấy 99) để tự động tạo ID mới
+     */
+    public String getLastBookId() {
+        String sql = "SELECT id FROM books WHERE id LIKE 'B%' ORDER BY CAST(SUBSTR(id, 2) AS INTEGER) DESC LIMIT 1";
+        try (Connection conn = DatabaseManager.getConnection();
+             java.sql.Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) return rs.getString("id");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

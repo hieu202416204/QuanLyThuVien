@@ -5,9 +5,10 @@ import BackEnd.User.User;
 import BackEnd.Utils.LanguageManager;
 import FrontEnd.Views.UserTabView;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -18,15 +19,15 @@ import java.util.List;
 import static FrontEnd.LibraryApp.ADMIN_PASSWORD;
 
 /**
- * CONTROLLER: Xử lý logic Thêm/Sửa/Xóa, Import CSV, và Tạo thẻ PDF cho Người dùng.
+ * CONTROLLER: Quản lý Người Dùng (TỐI ƯU HIỆU SUẤT CAO - SERVER SIDE PAGINATION)
  */
 public class UserTabController {
 
     private final Library library;
     private final UserTabView view;
 
-    private final ObservableList<User> userData = FXCollections.observableArrayList();
-    private final int USER_PAGE_SIZE = 100;
+    // Bỏ list userData để tiết kiệm RAM. Chỉ lưu số dòng/trang.
+    private static final int USER_PAGE_SIZE = 100;
     private File selectedUserAvatar = null;
 
     public UserTabController(Library library, UserTabView view) {
@@ -80,18 +81,23 @@ public class UserTabController {
         });
     }
 
-    // --- LOGIC DỮ LIỆU ---
+    // ========================================================
+    // LOGIC TẢI DỮ LIỆU TỐI ƯU (SERVER-SIDE PAGINATION)
+    // ========================================================
 
     public void refreshData() {
-        userData.setAll(library.getListUsers());
-        updatePagination();
-    }
-
-    private void updatePagination() {
-        int pageCount = (int) Math.ceil((double) userData.size() / USER_PAGE_SIZE);
+        // 1. Chỉ lấy TỔNG SỐ để tính trang (Mất 0.001s)
+        int totalUsers = library.getUserDAO().getTotalUserCount();
+        int pageCount = (int) Math.ceil((double) totalUsers / USER_PAGE_SIZE);
         view.getUserPagination().setPageCount(pageCount > 0 ? pageCount : 1);
-        view.getUserPagination().setCurrentPageIndex(0);
-        updateTablePage(0);
+
+        // 2. Load trang hiện tại
+        int currentPage = view.getUserPagination().getCurrentPageIndex();
+        if (currentPage >= pageCount) {
+            view.getUserPagination().setCurrentPageIndex(0);
+        } else {
+            updateTablePage(currentPage);
+        }
     }
 
     private Node createPage(int pageIndex) {
@@ -100,16 +106,79 @@ public class UserTabController {
     }
 
     private void updateTablePage(int pageIndex) {
-        int from = pageIndex * USER_PAGE_SIZE;
-        int to = Math.min(from + USER_PAGE_SIZE, userData.size());
-        if (from <= to && !userData.isEmpty()) {
-            view.getUserTable().setItems(FXCollections.observableArrayList(userData.subList(from, to)));
+        // Hiển thị trạng thái đang tải
+        view.getUserTable().getItems().clear();
+        view.getUserTable().setPlaceholder(new Label(LanguageManager.getText("msg.loading")));
+
+        int offset = pageIndex * USER_PAGE_SIZE;
+
+        // Chạy ngầm việc query Database để không làm đơ giao diện
+        Task<List<User>> loadTask = new Task<>() {
+            @Override
+            protected List<User> call() {
+                // Chỉ lấy đúng 100 User cho trang này
+                return library.getUserDAO().getUsersByPage(offset, USER_PAGE_SIZE);
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            List<User> users = loadTask.getValue();
+            if (users.isEmpty()) {
+                view.getUserTable().setPlaceholder(new Label("No users found."));
+            } else {
+                view.getUserTable().setItems(FXCollections.observableArrayList(users));
+            }
+        });
+
+        new Thread(loadTask).start();
+    }
+
+    // ========================================================
+    // TÌM KIẾM BẰNG DATABASE (KHÔNG DÙNG RAM)
+    // ========================================================
+
+    private void handleSearchById() {
+        String id = view.getSearchField().getText().trim();
+        if(id.isEmpty()) return;
+
+        User u = library.getUserDAO().getUserById(id);
+        if (u != null) {
+            view.getUserTable().setItems(FXCollections.observableArrayList(u));
+            view.getUserPagination().setPageCount(1); // Ẩn phân trang khi đang search
         } else {
             view.getUserTable().getItems().clear();
+            view.getUserTable().setPlaceholder(new Label("User not found."));
+            view.getUserPagination().setPageCount(1);
         }
     }
 
-    // --- LOGIC NGHIỆP VỤ ---
+    private void handleSearchByName() {
+        String name = view.getSearchField().getText().trim();
+        if(name.isEmpty()) return;
+
+        view.getUserTable().getItems().clear();
+        view.getUserTable().setPlaceholder(new Label(LanguageManager.getText("msg.searching")));
+
+        Task<List<User>> searchTask = new Task<>() {
+            @Override
+            protected List<User> call() {
+                return library.getUserDAO().searchUsersByName(name);
+            }
+        };
+
+        searchTask.setOnSucceeded(e -> {
+            List<User> result = searchTask.getValue();
+            view.getUserTable().setItems(FXCollections.observableArrayList(result));
+            view.getUserPagination().setPageCount(1); // Ẩn phân trang khi đang search
+            if (result.isEmpty()) view.getUserTable().setPlaceholder(new Label("No match found."));
+        });
+
+        new Thread(searchTask).start();
+    }
+
+    // ========================================================
+    // CÁC HÀM CRUD KHÁC (GIỮ NGUYÊN LOGIC)
+    // ========================================================
 
     private void handleAddUser() {
         String uId = view.getIdField().getText().trim();
@@ -122,7 +191,6 @@ public class UserTabController {
 
         User newUser = new User(uId, uName, view.getPersonalIdField().getText().trim(), view.getEmailField().getText().trim(), null);
 
-        // Giả sử có logic lưu ảnh avatar ở đây giống Book
         if (selectedUserAvatar != null) {
             try {
                 String savedName = BackEnd.Utils.FileUtil.saveImageToLocal(selectedUserAvatar);
@@ -222,27 +290,6 @@ public class UserTabController {
             FrontEnd.CardGenerator.saveCardToPDF(u, f, selectedUserAvatar);
             showAlert(Alert.AlertType.INFORMATION, "Success", "Card saved.");
         }
-    }
-
-    private void handleSearchById() {
-        String id = view.getSearchField().getText().trim();
-        if(id.isEmpty()) return;
-        User u = library.getUserDAO().getUserById(id);
-        if (u != null) {
-            userData.setAll(u);
-            updatePagination();
-        } else {
-            userData.clear();
-            updatePagination();
-        }
-    }
-
-    private void handleSearchByName() {
-        String name = view.getSearchField().getText().trim().toLowerCase();
-        if(name.isEmpty()) return;
-        List<User> result = library.getListUsers().stream().filter(u -> u.getName().toLowerCase().contains(name)).toList();
-        userData.setAll(result);
-        updatePagination();
     }
 
     private void clearFields() {

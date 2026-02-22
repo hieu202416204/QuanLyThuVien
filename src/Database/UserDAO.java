@@ -111,6 +111,53 @@ public class UserDAO {
         }
         return userList;
     }
+    // =======================================================
+    // PHÂN TRANG (PAGINATION) - TỐI ƯU HÓA DỮ LIỆU LỚN
+    // =======================================================
+
+    /**
+     * Lấy TỔNG SỐ LƯỢNG người dùng (Chạy mất 0.001s)
+     */
+    public int getTotalUserCount() {
+        String sql = "SELECT COUNT(id) FROM users";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi đếm số user: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * Lấy danh sách người dùng THEO TRANG (Chỉ lấy đúng giới hạn LIMIT)
+     * @param offset Vị trí bắt đầu lấy
+     * @param limit Số lượng bản ghi cần lấy (vd: 100)
+     */
+    public List<User> getUsersByPage(int offset, int limit) {
+        List<User> userList = new ArrayList<>();
+        // Lấy dữ liệu và sắp xếp theo ID (hoặc name tùy bạn) để đảm bảo tính nhất quán giữa các trang
+        String sql = "SELECT * FROM users ORDER BY id LIMIT ? OFFSET ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, limit);
+            pstmt.setInt(2, offset);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    userList.add(extractUserFromResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi phân trang user: " + e.getMessage());
+        }
+        return userList;
+    }
 
     // =======================================================
     // II. TÌM KIẾM VÀ CẬP NHẬT
@@ -223,5 +270,28 @@ public class UserDAO {
             System.err.println("Lỗi cập nhật user: " + e.getMessage());
             return false;
         }
+    }
+    /**
+     * Tìm kiếm người dùng theo tên trực tiếp từ Database
+     */
+    public List<User> searchUsersByName(String keyword) {
+        List<User> list = new ArrayList<>();
+        if (keyword == null || keyword.trim().isEmpty()) return list;
+
+        String sql = "SELECT * FROM users WHERE name LIKE ? LIMIT 100"; // Giới hạn 100 kết quả tìm kiếm
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, "%" + keyword.trim() + "%");
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(extractUserFromResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi tìm kiếm user: " + e.getMessage());
+        }
+        return list;
     }
 }
