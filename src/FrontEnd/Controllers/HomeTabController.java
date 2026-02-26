@@ -218,7 +218,7 @@ public class HomeTabController {
             if (r[0] <= maxDays) onTime++;
             else late++;
         }
-        view.getReturnRateChart().getData().clear();
+       // view.getReturnRateChart().getData().clear();
         if (onTime + late > 0) {
             view.getReturnRateChart().getData().add(new PieChart.Data("On time (" + onTime + ")", onTime));
             view.getReturnRateChart().getData().add(new PieChart.Data("Late (" + late + ")", late));

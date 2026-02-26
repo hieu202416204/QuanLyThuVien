@@ -104,8 +104,6 @@ public class LibraryApp extends Application {
                 isDarkMode = "dark".equals(savedTheme);
                 Thread.sleep(200);
 
-                // TRƯỚC ĐÂY: library.getBookDAO().reloadCache() tốn nhiều RAM.
-                // BÂY GIỜ: Không load toàn bộ sách. Chỉ đếm tổng số lượng.
                 updateMessage("Counting total data...");
                 library.getBookDAO().getTotalBookCount();
                 library.getUserDAO().getTotalUserCount();

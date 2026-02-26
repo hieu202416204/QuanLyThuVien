@@ -760,4 +760,36 @@
 .dark-mode .text-field {
     -fx-prompt-text-fill: #bdc3c7; /* xám sáng cho dark mode */
 }
+/* 1. Làm đẹp cái khung Menu chuột phải */
+.context-menu {
+    -fx-background-color: white;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-color: #e0e0e0;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 8, 0, 0, 2);
+    -fx-padding: 5;
+}
+
+/* 2. Style cho dòng chữ "Xem lịch sử" lúc bình thường */
+.menu-item {
+    -fx-padding: 8 15 8 15;
+    -fx-background-radius: 3;
+    -fx-transition: all 0.2s; /* Hiệu ứng mượt */
+}
+
+.menu-item .label {
+    -fx-text-fill: #2c3e50; /* Chữ màu xám đen */
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+/* 3. Hiệu ứng HOVER: Khi di chuột vào Menu Item */
+.menu-item:hover, .menu-item:focused {
+    -fx-background-color: #007bff; /* Nền chuyển sang Xanh Dương */
+}
+
+/* Khi di chuột vào thì chữ đổi sang màu Trắng cho dễ đọc */
+.menu-item:hover .label, .menu-item:focused .label {
+    -fx-text-fill: white;
+}
 

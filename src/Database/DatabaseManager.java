@@ -73,7 +73,9 @@ public class DatabaseManager {
                     +"category TEXT,"
                     + "status INTEGER NOT NULL," // 1 (true) là Available, 0 (false) là Borrowed
                     + "imagePath TEXT,"
-                    + "soLuotMuon INTEGER DEFAULT 0"
+                    + "soLuotMuon INTEGER DEFAULT 0,"
+                    + "damage_percent INTEGER DEFAULT 0,"
+                    + "damage_details TEXT"
                     + ");";
             stmt.execute(sqlBooks);
 

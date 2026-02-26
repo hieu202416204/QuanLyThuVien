@@ -9,8 +9,10 @@ import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.util.StringConverter;
 
 import java.io.File;
 import java.util.List;
@@ -45,8 +47,53 @@ public class BookManagementTabController {
         view.getImportBtn().setOnAction(e -> handleImportBooks());
         view.getViewHistoryBtn().setOnAction(e -> handleViewBookHistory());
         view.getPrintBarcodeBtn().setOnAction(e -> handlePrintBookBarcode());
+// Gắn sự kiện cho nút Kiểm kê
+        view.getInspectBtn().setOnAction(e -> handleInspectBook());
 
-        view.getSelectImageBtn().setOnAction(e -> handleSelectImage());
+        // Cấu hình Cột Tình Trạng để hiện % và nút Chi tiết
+        view.getColCondition().setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue()));
+        view.getColCondition().setCellFactory(col -> new TableCell<>() {
+            private final Button btnDetail = new Button(LanguageManager.getText("status.chitiet"));
+            private final HBox pane = new HBox(5);
+            private final Label lbl = new Label();
+
+            {
+                btnDetail.setStyle("-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-size: 10px; -fx-padding: 2 6; -fx-cursor: hand;");
+                pane.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                pane.getChildren().addAll(lbl, btnDetail);
+
+                // Sự kiện khi bấm "Chi tiết"
+                btnDetail.setOnAction(e -> {
+                    Book b = getItem();
+                    if (b != null) {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle(LanguageManager.getText("status.chitiettinhtrang"));
+                        alert.setHeaderText(LanguageManager.getText("status.sach") + b.getName() + " (" + b.getDamagePercent() + LanguageManager.getText("status.huhong"));
+                        alert.setContentText(LanguageManager.getText("status.ghichu")+"\n" + (b.getDamageDetails().isEmpty() ? LanguageManager.getText("status.khongco") : b.getDamageDetails()));
+                        alert.show();
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Book item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    if (item.getDamagePercent() == 0) {
+                        lbl.setText(LanguageManager.getText("status.binhthuong"));
+                        lbl.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+                        btnDetail.setVisible(false); // 0% thì ẩn nút chi tiết
+                    } else {
+                        lbl.setText(LanguageManager.getText("status.huhong1") + item.getDamagePercent() + "%");
+                        lbl.setStyle("-fx-text-fill: #c0392b; -fx-font-weight: bold;");
+                        btnDetail.setVisible(true);
+                    }
+                    setGraphic(pane);
+                }
+            }
+        });        view.getSelectImageBtn().setOnAction(e -> handleSelectImage());
         view.getIsbnField().setOnAction(e -> handleAutoFillBook());
         view.getAutoFillBtn().setOnAction(e -> handleAutoFillBook());
 
@@ -352,7 +399,7 @@ public class BookManagementTabController {
     }
 
     /**
-     * Tự động sinh ID mới NHANH CHÓNG nhờ dùng lệnh SQL lấy ID lớn nhất
+     * Tự động sinh ID mới NHANH CHÓNG dùng lệnh SQL lấy ID lớn nhất
      */
     private String generateNextBookId() {
         String lastId = library.getBookDAO().getLastBookId();
@@ -375,7 +422,107 @@ public class BookManagementTabController {
         catTask.setOnSucceeded(e -> view.getCategoryBox().setItems(FXCollections.observableArrayList(catTask.getValue())));
         new Thread(catTask).start();
     }
+    private void handleInspectBook() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle(LanguageManager.getText("status.kiemketinhtrangsach"));
+        dialog.setHeaderText(LanguageManager.getText("status.timkiemvacapnhattinhtrangsach"));
 
+        VBox layout = new VBox(15);
+        layout.setPadding(new javafx.geometry.Insets(15));
+        layout.setPrefWidth(400);
+
+        // Khối Tìm kiếm
+        HBox searchBox = new HBox(10);
+        TextField txtSearch = new TextField();
+        txtSearch.setPromptText(LanguageManager.getText("status.nhapidsach"));
+        txtSearch.setPrefWidth(200);
+        Button btnSearch = new Button(LanguageManager.getText("status.timkiem"));
+        searchBox.getChildren().addAll(txtSearch, btnSearch);
+
+        // Khối Nhập liệu
+        Label lblBookName = new Label(LanguageManager.getText("status.sachchuachon"));
+        lblBookName.setStyle("-fx-font-weight: bold; -fx-text-fill: #2980b9;");
+
+        ComboBox<Integer> cbPercent =
+                new ComboBox<>(FXCollections.observableArrayList(0, 20, 40, 60, 80));
+        cbPercent.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Integer value){
+                if(value==null) return "";
+                return value+"%";
+            }
+            @Override
+            public Integer fromString(String string){
+                return Integer.parseInt(string.replace("%", ""));
+            }
+        });
+        cbPercent.setPromptText(LanguageManager.getText("status.chonmucdohuhong"));
+        cbPercent.setPrefWidth(Double.MAX_VALUE);
+
+        TextArea txtDetails = new TextArea();
+        txtDetails.setPromptText(LanguageManager.getText("status.nhapchitiethuhong"));
+        txtDetails.setPrefRowCount(3);
+
+        Button btnUpdate = new Button(LanguageManager.getText("status.capnhattinhtrang"));
+        btnUpdate.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnUpdate.setMaxWidth(Double.MAX_VALUE);
+        btnUpdate.setDisable(true); // Chỉ mở khi đã tìm thấy sách
+
+        layout.getChildren().addAll(
+                new Label(LanguageManager.getText("status.timkiemsach")), searchBox,
+                new Separator(),
+                lblBookName,
+                new Label(LanguageManager.getText("status.danhgiatinhtrang")), cbPercent,
+                new Label(LanguageManager.getText("status.ghichuchitiet")), txtDetails,
+                btnUpdate
+        );
+
+        dialog.getDialogPane().setContent(layout);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        // Biến lưu giữ sách đang tìm được
+        final Book[] foundBook = {null};
+
+        // Logic Tìm kiếm
+        btnSearch.setOnAction(e -> {
+            String id = txtSearch.getText().trim();
+            Book b = library.findBookById(id);
+            if (b != null) {
+                foundBook[0] = b;
+                lblBookName.setText(LanguageManager.getText("status.sach") + b.getName());
+                cbPercent.setValue(b.getDamagePercent());
+                txtDetails.setText(b.getDamageDetails());
+                btnUpdate.setDisable(false);
+            } else {
+                lblBookName.setText(LanguageManager.getText("status.sachkhongtimthayma") + id);
+                lblBookName.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                btnUpdate.setDisable(true);
+            }
+        });
+
+        // Logic Cập nhật
+        btnUpdate.setOnAction(e -> {
+            if (foundBook[0] != null) {
+                int selectedPercent = cbPercent.getValue() == null ? 0 : cbPercent.getValue();
+                foundBook[0].setDamagePercent(selectedPercent);
+
+                String details = txtDetails.getText();
+                foundBook[0].setDamageDetails(details == null ? "" : details.trim());
+
+                library.getBookDAO().updateBook(foundBook[0]);
+
+                refreshTable();
+                showAlert(
+                        Alert.AlertType.INFORMATION,
+                        LanguageManager.getText("status.thanhcong"),
+                        LanguageManager.getText("status.dacapnhat")
+                );
+                dialog.close();
+            }
+        });
+
+        dialog.showAndWait();
+    }
     private void showAlert(Alert.AlertType type, String title, String msg) {
         Alert alert = new Alert(type);
         alert.setTitle(title);

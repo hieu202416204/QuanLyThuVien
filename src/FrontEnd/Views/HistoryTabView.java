@@ -3,32 +3,60 @@ package FrontEnd.Views;
 import BackEnd.Histories.UserInUserHistory;
 import BackEnd.Utils.LanguageManager;
 import javafx.geometry.Insets;
-import javafx.scene.control.Button;
-import javafx.scene.control.Pagination;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.beans.property.SimpleStringProperty;
 import java.time.format.DateTimeFormatter;
 
-// 1. Kế thừa đúng VBox như file gốc
 public class HistoryTabView extends VBox {
 
-    // Khai báo các thành phần UI để Controller gọi được
     private TableView<UserInUserHistory> historyTable;
     private Pagination historyPagination;
+
+    // Các nút chức năng mới
+    private DatePicker datePicker;
+    private Button searchBtn;
+    private Button clearBtn;
     private Button refreshBtn;
+    private Button exportBtn;
+    private Button deleteBtn;
 
     public HistoryTabView() {
-        initUI(); // Gọi lại đúng hàm vẽ UI
+        initUI();
     }
 
     private void initUI() {
-        // 2. Giữ nguyên toàn bộ CSS, Padding, Spacing
         this.setPadding(new Insets(10));
         this.setSpacing(10);
 
-        // Tạo bảng (Giữ nguyên mã cũ của bạn)
+        // --- 1. TẠO THANH CÔNG CỤ TÌM KIẾM & CHỨC NĂNG ---
+        datePicker = new DatePicker();
+        datePicker.setPromptText(LanguageManager.getText("prompt.select_date"));
+        datePicker.setPrefWidth(150);
+
+        searchBtn = new Button(LanguageManager.getText("btn.lookup"));
+        searchBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;");
+
+        clearBtn = new Button(LanguageManager.getText("btn.clear_filter"));
+
+        refreshBtn = new Button("🔄 " + LanguageManager.getText("btn.refresh"));
+
+        exportBtn = new Button("📥 " + LanguageManager.getText("btn.export"));
+        exportBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
+
+        deleteBtn = new Button("🗑 " + LanguageManager.getText("btn.delete"));
+        deleteBtn.getStyleClass().add("button-delete");
+        deleteBtn.setDisable(true); // Bị khóa cho đến khi click vào dòng lịch sử
+
+        HBox topBar = new HBox(10);
+        topBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        topBar.getChildren().addAll(
+                new Label(LanguageManager.getText("label.search_date")), datePicker, searchBtn, clearBtn,
+                new Separator(javafx.geometry.Orientation.VERTICAL),
+                refreshBtn, exportBtn
+        );
+        // --- 2. KHỞI TẠO BẢNG ---
         historyTable = new TableView<>();
         TableColumn<UserInUserHistory, String> colTime = new TableColumn<>(LanguageManager.getText("col.time"));
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -49,14 +77,17 @@ public class HistoryTabView extends VBox {
 
         historyPagination = new Pagination();
 
-        refreshBtn = new Button(LanguageManager.getText("btn.refresh"));
-
-        // 3. Giữ nguyên thứ tự add vào VBox
-        this.getChildren().addAll(refreshBtn, historyTable, historyPagination);
+        // 3. THÊM TẤT CẢ VÀO LAYOUT
+        this.getChildren().addAll(topBar, historyTable, historyPagination);
     }
 
     // --- Cung cấp Getter cho Controller ---
     public TableView<UserInUserHistory> getHistoryTable() { return historyTable; }
     public Pagination getHistoryPagination() { return historyPagination; }
+    public DatePicker getDatePicker() { return datePicker; }
+    public Button getSearchBtn() { return searchBtn; }
+    public Button getClearBtn() { return clearBtn; }
     public Button getRefreshBtn() { return refreshBtn; }
+    public Button getExportBtn() { return exportBtn; }
+    public Button getDeleteBtn() { return deleteBtn; }
 }

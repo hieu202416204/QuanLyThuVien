@@ -22,6 +22,8 @@ public class BookManagementTabView extends VBox {
     private TextField idField, nameField, authorField, yearField, isbnField;
     private ComboBox<String> categoryBox;
     private Label imagePathLabel;
+    private Button inspectBtn; // Nút Kiểm kê
+    private TableColumn<Book, Book> colCondition; // Cột tình trạng
 
     // --- Buttons ---
     private Button autoFillBtn, selectImageBtn;
@@ -121,9 +123,13 @@ public class BookManagementTabView extends VBox {
         printBarcodeBtn = new Button("🖨️ " + LanguageManager.getText("btn.print_barcode"));
         printBarcodeBtn.setDisable(true);
 
+        inspectBtn = new Button(LanguageManager.getText("status.kiemke"));
+        inspectBtn.setStyle("-fx-background-color: #f1c40f; -fx-text-fill: black; -fx-font-weight: bold;");
+
+        // Thêm inspectBtn vào HBox bar
         HBox box = new HBox(10, resetBtn, addBtn, editBtn, deleteBtn,
                 new Separator(javafx.geometry.Orientation.VERTICAL),
-                importBtn, viewHistoryBtn, printBarcodeBtn);
+                importBtn, inspectBtn, viewHistoryBtn, printBarcodeBtn); // <--- Đã chèn inspectBtn vào đây
         box.setAlignment(Pos.CENTER_LEFT);
         box.setPadding(new Insets(5, 0, 5, 0));
         return box;
@@ -150,8 +156,10 @@ public class BookManagementTabView extends VBox {
         colStatus.setCellValueFactory(data -> new SimpleStringProperty(
                 data.getValue().isStatus() ? LanguageManager.getText("status.available") : LanguageManager.getText("status.borrowed")
         ));
+        colCondition = new TableColumn<>(LanguageManager.getText("status.tinhtrang"));
+        colCondition.setPrefWidth(180);
 
-        bookTable.getColumns().addAll(colId, colName, colAuthor, colCategory, colStatus);
+        bookTable.getColumns().addAll(colId, colName, colAuthor, colCategory, colStatus, colCondition);
         bookTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
@@ -193,4 +201,6 @@ public class BookManagementTabView extends VBox {
     public Button getImportBtn() { return importBtn; }
     public Button getViewHistoryBtn() { return viewHistoryBtn; }
     public Button getPrintBarcodeBtn() { return printBarcodeBtn; }
+    public Button getInspectBtn() { return inspectBtn; }
+    public TableColumn<Book, Book> getColCondition() { return colCondition; }
 }

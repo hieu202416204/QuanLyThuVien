@@ -111,14 +111,24 @@ public class Book {
     public boolean isStatus() {
         return this.status;
     }
-//    public String getImagePath() { return imagePath; }
-//    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
-    public void inTTin(){
-        System.out.println("ID: "+ this.getId());
-        System.out.println("Name: "+ this.getName());
-        System.out.println("Author: "+ this.getAuthor());
-        System.out.println("Year: "+ this.getYear());
-        System.out.println("Status: "+ this.isStatus());
-        System.out.println("");
+    // Thêm 2 thuộc tính mới
+    private int damagePercent = 0; // Mặc định 0% (Bình thường)
+    private String damageDetails = ""; // Chi tiết hư hỏng
+
+    // Thêm Getters và Setters cho chúng
+    public int getDamagePercent() {
+        return damagePercent;
+    }
+
+    public void setDamagePercent(int damagePercent) {
+        this.damagePercent = damagePercent;
+    }
+
+    public String getDamageDetails() {
+        return damageDetails;
+    }
+
+    public void setDamageDetails(String damageDetails) {
+        this.damageDetails = damageDetails;
     }
 }

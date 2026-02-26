@@ -7,9 +7,7 @@ import FrontEnd.Views.UserTabView;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
@@ -60,7 +58,25 @@ public class UserTabController {
 
         // Phân trang
         view.getUserPagination().setPageFactory(this::createPage);
-
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem viewHistoryItem = new MenuItem("User history");
+        viewHistoryItem.setOnAction(e -> {
+            User selectedUser = view.getUserTable().getSelectionModel().getSelectedItem();
+            if (selectedUser != null){
+                handleViewUserHistory(selectedUser);
+            }
+        });
+        contextMenu.getItems().add(viewHistoryItem);
+        // Gắn ContextMenu vào từng dòng của Bảng
+        view.getUserTable().setRowFactory(tv -> {
+            TableRow<User> row = new TableRow<>();
+            row.contextMenuProperty().bind(
+                    javafx.beans.binding.Bindings.when(row.emptyProperty())
+                            .then((ContextMenu) null)
+                            .otherwise(contextMenu)
+            );
+            return row;
+        });
         // Lắng nghe chọn dòng trong Table
         view.getUserTable().getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> {
             boolean hasSel = newVal != null;
@@ -79,6 +95,7 @@ public class UserTabController {
                 clearFields();
             }
         });
+
     }
 
     // ========================================================
@@ -211,9 +228,9 @@ public class UserTabController {
         User selected = view.getUserTable().getSelectionModel().getSelectedItem();
         if (selected == null) return;
 
-        selected.setName(view.getNameField().getText().trim());
-        selected.setEmail(view.getEmailField().getText().trim());
-        selected.setPersonalIdNumber(view.getPersonalIdField().getText().trim());
+        selected.setName(safeTrim(view.getNameField()));
+        selected.setEmail(safeTrim(view.getEmailField()));
+        selected.setPersonalIdNumber(safeTrim(view.getPersonalIdField()));
 
         if (selectedUserAvatar != null) {
             try {
@@ -293,6 +310,7 @@ public class UserTabController {
     }
 
     private void clearFields() {
+        view.getUserTable().getSelectionModel().clearSelection();
         view.getIdField().clear();
         view.getNameField().clear();
         view.getEmailField().clear();
@@ -300,7 +318,45 @@ public class UserTabController {
         view.getIdField().setEditable(true);
         selectedUserAvatar = null;
         view.getLblAvatarStatus().setText(LanguageManager.getText("label.not_selected"));
-        view.getUserTable().getSelectionModel().clearSelection();
+        //view.getUserTable().getSelectionModel().clearSelection();
+    }
+    private String safeTrim(TextInputControl tf){
+        String s  = tf.getText();
+        return s == null ? "" : s.trim();
+    }
+    // ========================================================
+    // XEM LỊCH SỬ NGƯỜI DÙNG
+    // ========================================================
+    private void handleViewUserHistory(User user) {
+        List<String[]> hist = library.getTransactionDAO().getUserHistory(user.getId());
+        StringBuilder sb = new StringBuilder();
+
+        if (hist == null || hist.isEmpty()) {
+            sb.append(LanguageManager.getText("historyuser.chuacolichsu"));
+        } else {
+            for (String[] s : hist) {
+                String returnDate = (s[2] == null || s[2].isEmpty() || s[2].equals("null")) ? LanguageManager.getText("historyuser.chuatra") : s[2];
+                String status = s[3].equals("BORROWED") ? LanguageManager.getText("historyuser.dangmuon") : LanguageManager.getText("historyuser.datra");
+
+                sb.append(LanguageManager.getText("historyuser.tensach")).append(s[0]).append("\n")
+                        .append(LanguageManager.getText("historyuser.muon")).append(s[1]).append("\n")
+                        .append(LanguageManager.getText("historyuser.tra")).append(returnDate).append("\n")
+                        .append(LanguageManager.getText("historyuser.trangthai")).append(status).append("\n")
+                        .append("--------------------------------------\n");
+            }
+        }
+
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle(LanguageManager.getText("historyuser.title"));
+        a.setHeaderText(LanguageManager.getText("historyuser.user") + user.getName() + " (" + user.getId() + ")");
+
+        TextArea area = new TextArea(sb.toString());
+        area.setEditable(false);
+        area.setWrapText(true);
+        area.setPrefHeight(300);
+
+        a.getDialogPane().setContent(area);
+        a.showAndWait();
     }
 
     private void showAlert(Alert.AlertType type, String title, String msg) {

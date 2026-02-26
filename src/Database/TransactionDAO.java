@@ -101,56 +101,35 @@ public class TransactionDAO {
     // II. LỊCH SỬ NGƯỜI DÙNG
     // =======================================================
 
-    public List<UserInUserHistory> getUserHistory(String userId) {
-        List<UserInUserHistory> historyList = new ArrayList<>();
-
-        String sql =
-                "SELECT t.borrow_date, t.return_date, b.name AS book_name, b.id AS book_id "
-                        + "FROM transactions t JOIN books b ON t.book_id = b.id "
-                        + "WHERE t.user_id = ?";
+    /**
+     * Lấy lịch sử mượn trả sách của MỘT NGƯỜI DÙNG CỤ THỂ
+     */
+    public List<String[]> getUserHistory(String userId) {
+        List<String[]> list = new ArrayList<>();
+        // Kết hợp (JOIN) bảng transactions và books để lấy tên sách cho thân thiện
+        String sql = "SELECT b.name, t.borrow_date, t.return_date, t.status " +
+                "FROM transactions t " +
+                "JOIN books b ON t.book_id = b.id " +
+                "WHERE t.user_id = ? ORDER BY t.borrow_date DESC";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, userId);
-
             try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-
-                    String bookName = rs.getString("book_name");
-                    String bookId = rs.getString("book_id");
-
-                    // ------ BORROW ------
-                    LocalDateTime borrowTime = normalizeDateTime(rs.getString("borrow_date"));
-                    historyList.add(new UserInUserHistory(
-                            userId,
-                            bookId,
-                            "Mượn sách",
-                            borrowTime,
-                            bookName
-                    ));
-
-                    // ------ RETURN ------
-                    String returnRaw = rs.getString("return_date");
-                    if (returnRaw != null) {
-                        LocalDateTime returnTime = normalizeDateTime(returnRaw);
-                        historyList.add(new UserInUserHistory(
-                                userId,
-                                bookId,
-                                "Trả sách",
-                                returnTime,
-                                bookName
-                        ));
-                    }
+                while(rs.next()) {
+                    list.add(new String[]{
+                            rs.getString(1), // Tên sách
+                            rs.getString(2), // Ngày mượn
+                            rs.getString(3), // Ngày trả
+                            rs.getString(4)  // Trạng thái (BORROWED / RETURNED)
+                    });
                 }
             }
-
         } catch (SQLException e) {
-            System.err.println("Lỗi khi lấy lịch sử người dùng: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        historyList.sort(Comparator.comparing(UserInUserHistory::getLocalDateTime).reversed());
-        return historyList;
+        return list;
     }
 
     // =======================================================
@@ -393,4 +372,53 @@ public class TransactionDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
+    // =======================================================
+    // XÓA 1 DÒNG LỊCH SỬ CỤ THỂ
+    // =======================================================
+    public boolean deleteHistoryRecord(String userId, String bookName, LocalDateTime time) {
+        if (time == null) return false;
+
+        // 1. Chuỗi có đầy đủ giờ phút giây
+        String exactTimeStr = time.format(DATE_TIME_FORMATTER); // VD: 2024-02-24 10:20:30
+
+        // 2. Chuỗi chỉ có ngày
+        String shortTimeStr = time.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")); // VD: 2024-02-24
+
+        // Bao phủ toàn bộ các trường hợp lưu trữ thời gian của SQLite
+        String sql = "DELETE FROM transactions " +
+                "WHERE user_id = ? " +
+                "AND book_id IN (SELECT id FROM books WHERE name = ?) " +
+                "AND (" +
+                "borrow_date = ? OR return_date = ? OR " +    // Trùng khớp hoàn toàn
+                "borrow_date = ? OR return_date = ? OR " +    // Trùng khớp dữ liệu cũ
+                "borrow_date LIKE ? OR return_date LIKE ?" +  // Đề phòng DB có đuôi mili-giây .000
+                ")";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userId);
+            pstmt.setString(2, bookName);
+
+            // Truyền tham số cho nhóm exactTime
+            pstmt.setString(3, exactTimeStr);
+            pstmt.setString(4, exactTimeStr);
+
+            // Truyền tham số cho nhóm shortTime (dữ liệu cũ)
+            pstmt.setString(5, shortTimeStr);
+            pstmt.setString(6, shortTimeStr);
+
+            // Truyền tham số cho nhóm LIKE
+            pstmt.setString(7, exactTimeStr + "%");
+            pstmt.setString(8, exactTimeStr + "%");
+
+            // Nếu > 0 nghĩa là đã xóa thành công ít nhất 1 dòng
+            return pstmt.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Lỗi xóa lịch sử: " + e.getMessage());
+            return false;
+        }
+    }
+
 }

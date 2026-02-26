@@ -7,9 +7,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 
 /**
  * VIEW: Chỉ đảm nhận việc vẽ giao diện thống kê (Bảng xếp hạng, Nút bấm).
@@ -23,8 +21,10 @@ public class StatisticTabView extends VBox {
 
     private TableView<User> topUserTable;
     private TableView<Book> topBookTable;
+    private TableView<Book> topBookRateTable; // day la bang hien thi cac quyen sach co muc do hu hong cao
     private Label titleUser;
     private Label titleBook;
+    private Label titleBookRate;
 
     public StatisticTabView() {
         initUI();
@@ -39,7 +39,7 @@ public class StatisticTabView extends VBox {
         HBox buttonBar = createButtonBar();
 
         // 2. Statistics Layout (2 Tables side by side)
-        HBox statsLayout = createStatsLayout();
+        GridPane statsLayout = createStatsLayout();
 
         this.getChildren().addAll(buttonBar, statsLayout);
     }
@@ -58,11 +58,9 @@ public class StatisticTabView extends VBox {
         return box;
     }
 
-    private HBox createStatsLayout() {
+    private GridPane createStatsLayout() {
         // --- Table Top Users ---
         topUserTable = new TableView<>();
-        topUserTable.setMinWidth(400);
-        topUserTable.setMinHeight(500);
 
         TableColumn<User, String> colURank = new TableColumn<>(LanguageManager.getText("col.rank"));
         colURank.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(topUserTable.getItems().indexOf(data.getValue()) + 1)));
@@ -79,12 +77,12 @@ public class StatisticTabView extends VBox {
         titleUser = new Label(LanguageManager.getText("title.top_users"));
         titleUser.getStyleClass().add("page-title");
         VBox vUser = new VBox(5, titleUser, topUserTable);
+        vUser.setAlignment(Pos.CENTER);
         HBox.setHgrow(vUser, Priority.ALWAYS);
 
 
         // --- Table Top Books ---
         topBookTable = new TableView<>();
-        topBookTable.setMinWidth(400);
 
         TableColumn<Book, String> colBRank = new TableColumn<>(LanguageManager.getText("col.rank"));
         colBRank.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(topBookTable.getItems().indexOf(data.getValue()) + 1)));
@@ -97,15 +95,69 @@ public class StatisticTabView extends VBox {
 
         topBookTable.getColumns().addAll(colBRank, colBName, colBCount);
         topBookTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        topBookTable.setMinHeight(500);
 
 
         titleBook = new Label(LanguageManager.getText("title.top_books"));
         titleBook.getStyleClass().add("page-title");
         VBox vBook = new VBox(5, titleBook, topBookTable);
+        vBook.setAlignment(Pos.CENTER);
         HBox.setHgrow(vBook, Priority.ALWAYS);
 
-        return new HBox(20, vUser, vBook);
+        // top sach co ti le hu hong cao nhat
+
+        topBookRateTable = new TableView<>();
+
+        TableColumn<Book, String> colBRRank = new TableColumn<>(LanguageManager.getText("col.rank"));
+        colBRRank.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(topBookRateTable.getItems().indexOf(data.getValue()) + 1)));
+        TableColumn<Book, String> colBRName = new TableColumn<>(LanguageManager.getText("col.name"));
+        colBRName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
+        TableColumn<Book, String> colBRCount = new TableColumn<>("Tỉ lệ hư hỏng");
+        colBRCount.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().getDamagePercent())));
+
+        topBookRateTable.getColumns().addAll(colBRRank, colBRName, colBRCount);
+        topBookRateTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+
+        titleBookRate = new Label("TOP SÁCH CÓ TỈ LỆ HƯ HỎNG CAO NHẤT");
+        titleBookRate.getStyleClass().add("page-title");
+        VBox vBookRate = new VBox(5, titleBookRate, topBookRateTable);
+        vBookRate.setAlignment(Pos.CENTER);
+        HBox.setHgrow(vBookRate, Priority.ALWAYS);
+
+        // bố cục trang
+        GridPane grid = new GridPane();
+        grid.setHgap(40);
+        grid.setVgap(20);
+
+        grid.add(vUser,0,0);
+        grid.add(vBook, 1, 0);
+        grid.add(vBookRate, 0, 1);
+
+        GridPane.setHgrow(vUser, Priority.ALWAYS);
+        GridPane.setHgrow(vBook, Priority.ALWAYS);
+        GridPane.setHgrow(vBookRate, Priority.ALWAYS);
+
+        GridPane.setVgrow(vUser, Priority.ALWAYS);
+        GridPane.setVgrow(vBook, Priority.ALWAYS);
+        GridPane.setVgrow(vBookRate, Priority.ALWAYS);
+
+        ColumnConstraints c1 = new ColumnConstraints();
+        c1.setHgrow(Priority.ALWAYS);
+        c1.setPercentWidth(50);
+
+        ColumnConstraints c2 = new ColumnConstraints();
+        c2.setHgrow(Priority.ALWAYS);
+        c2.setPercentWidth(50);
+
+        grid.getColumnConstraints().addAll(c1, c2);
+        RowConstraints r1 = new RowConstraints();
+        r1.setVgrow(Priority.ALWAYS);
+
+        RowConstraints r2 = new RowConstraints();
+        r2.setVgrow(Priority.ALWAYS);
+
+        grid.getRowConstraints().addAll(r1, r2);
+
+        return grid;
     }
 
     // ==========================================
@@ -118,4 +170,6 @@ public class StatisticTabView extends VBox {
     public TableView<Book> getTopBookTable() { return topBookTable; }
     public Label getTitleUser() { return titleUser; }
     public Label getTitleBook() { return titleBook; }
+    public TableView<Book> getTopBookRateTable(){ return topBookRateTable; }
+    public Label getTitleBookRate(){ return titleBookRate; }
 }

@@ -16,5 +16,9 @@ public class BookStatistic {
     public List<Book> getTopBook(){
         return bookDAO.getBooksSortedByBorrowCount(); // Truy vấn DB
     }
+    public List<Book> getTopBookRate(){
+        return bookDAO.getBooksSortedByRateCount(); // truy van database
+    }
+
 }
 

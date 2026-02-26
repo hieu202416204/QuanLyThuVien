@@ -99,6 +99,7 @@ public class BookDAO {
         }
         return false;
     }
+
     /**
      * Cập nhật trạng thái sách (Mượn/Trả) và số lượt mượn.
      * Cập nhật đồng thời cả DB và Cache để UI phản hồi ngay lập tức.
@@ -118,12 +119,11 @@ public class BookDAO {
 
             if (affectedRows > 0) {
                 // 2. Nếu DB thành công, cập nhật ngay trong Cache (RAM)
-                // Duyệt qua list cache để tìm sách và sửa đổi trực tiếp object đó
                 for (Book b : cachedBooks) {
                     if (b.getId().equals(bookId)) {
                         b.setStatus(newStatus);
                         b.setSoLuotMuonFromDB(newSoLuotMuon);
-                        break; // Tìm thấy rồi thì dừng vòng lặp
+                        break;
                     }
                 }
                 return true;
@@ -152,7 +152,8 @@ public class BookDAO {
     }
 
     private boolean insertBookToDB(Book book) {
-        String sql = "INSERT INTO books (id, name, author, year,category, status, imagePath, soLuotMuon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        // Đã bổ sung damage_percent và damage_details
+        String sql = "INSERT INTO books (id, name, author, year, category, status, imagePath, soLuotMuon, damage_percent, damage_details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, book.getId());
@@ -163,6 +164,9 @@ public class BookDAO {
             pstmt.setInt(6, book.isStatus() ? 1 : 0);
             pstmt.setString(7, book.getImagePath());
             pstmt.setInt(8, book.getSoLuotMuon());
+            pstmt.setInt(9, book.getDamagePercent());
+            pstmt.setString(10, book.getDamageDetails());
+
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Lỗi DB Add: " + e.getMessage());
@@ -171,7 +175,8 @@ public class BookDAO {
     }
 
     private boolean updateBookInDB(Book book) {
-        String sql = "UPDATE books SET name = ?, author = ?, year = ?, category =?, imagePath = ? WHERE id = ?";
+        // Đã bổ sung damage_percent và damage_details
+        String sql = "UPDATE books SET name = ?, author = ?, year = ?, category = ?, imagePath = ?, status = ?, damage_percent = ?, damage_details = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, book.getName());
@@ -179,17 +184,12 @@ public class BookDAO {
             pstmt.setString(3, book.getYear());
             pstmt.setString(4, book.getCategory());
             pstmt.setString(5, book.getImagePath());
-            pstmt.setString(6, book.getId());
-            if (pstmt.executeUpdate() > 0) {
-                // Update Cache
-                for (int i = 0; i < cachedBooks.size(); i++) {
-                    if (cachedBooks.get(i).getId().equals(book.getId())) {
-                        cachedBooks.set(i, book);
-                        break;
-                    }
-                }
-                return true;
-            }
+            pstmt.setInt(6, book.isStatus() ? 1 : 0);
+            pstmt.setInt(7, book.getDamagePercent());
+            pstmt.setString(8, book.getDamageDetails());
+            pstmt.setString(9, book.getId());
+
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
     }
@@ -223,6 +223,12 @@ public class BookDAO {
                 .sorted(Comparator.comparingInt(Book::getSoLuotMuon).reversed())
                 .collect(Collectors.toList());
     }
+    public List<Book> getBooksSortedByRateCount(){
+        reloadCache();
+        return cachedBooks.stream()
+                .sorted(Comparator.comparingInt(Book::getDamagePercent).reversed()).
+                collect(Collectors.toList());
+    }
 
     private Book extractBookFromResultSet(ResultSet rs) throws SQLException {
         Book book = new Book();
@@ -234,8 +240,14 @@ public class BookDAO {
         book.setStatus(rs.getInt("status") == 1);
         book.setImagePath(rs.getString("imagePath"));
         book.setSoLuotMuonFromDB(rs.getInt("soLuotMuon"));
+
+        // --- Đọc Tình trạng sách ---
+        book.setDamagePercent(rs.getInt("damage_percent"));
+        book.setDamageDetails(rs.getString("damage_details"));
+
         return book;
     }
+
     // --- 4. LẤY DANH SÁCH CHỦ ĐỀ DUY NHẤT (DISTINCT) ---
     /**
      * Lấy danh sách các chủ đề đang có trong thư viện để gợi ý cho người dùng.
@@ -266,10 +278,9 @@ public class BookDAO {
 
         final String lowerKey = keyword.toLowerCase().trim();
 
-        // Sử dụng Parallel Stream để tìm kiếm đa luồng tốc độ cao
+        // Sử dụng Parallel Stream để tìm kiếm đa luồng tốc độ cao trên RAM
         return cachedBooks.parallelStream()
                 .filter(b -> {
-                    // Kiểm tra null an toàn và so sánh
                     return (b.getName() != null && b.getName().toLowerCase().contains(lowerKey)) ||
                             (b.getAuthor() != null && b.getAuthor().toLowerCase().contains(lowerKey)) ||
                             (b.getId().toLowerCase().contains(lowerKey)) ||
@@ -278,8 +289,9 @@ public class BookDAO {
                 })
                 .collect(Collectors.toList());
     }
+
     // =======================================================
-    // PHÂN TRANG (PAGINATION) - TỐI ƯU HÓA DỮ LIỆU LỚN
+    // PHÂN TRANG (PAGINATION) - PHỤC VỤ CHO GIAO DIỆN TỐI ƯU
     // =======================================================
 
     /**
@@ -317,6 +329,7 @@ public class BookDAO {
         }
         return list;
     }
+
     /**
      * Lấy ID sách lớn nhất (VD: B099 -> lấy 99) để tự động tạo ID mới
      */

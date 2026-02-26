@@ -53,15 +53,21 @@ public class StatisticTabController {
     public void refreshData() {
         // Cập nhật Top Users
         List<User> allUsers = userStatistic.danhSachNguoiDung();
-        int uLimit = Math.min(20, allUsers.size());
+        int uLimit = Math.min(40, allUsers.size());
         view.getTopUserTable().setItems(FXCollections.observableArrayList(allUsers.subList(0, uLimit)));
-        view.getTitleUser().setText(LanguageManager.getText("title.top_users") + " (" + allUsers.size() + ")");
+        view.getTitleUser().setText(LanguageManager.getText("title.top_users"));
 
         // Cập nhật Top Books
         List<Book> allBooks = bookStatistic.getTopBook();
-        int bLimit = Math.min(20, allBooks.size());
+        int bLimit = Math.min(40, allBooks.size());
         view.getTopBookTable().setItems(FXCollections.observableArrayList(allBooks.subList(0, bLimit)));
-        view.getTitleBook().setText(LanguageManager.getText("title.top_books") + " (" + allBooks.size() + ")");
+        view.getTitleBook().setText(LanguageManager.getText("title.top_books"));
+
+        // Cập nhật top tỉ lệ sách hu hỏng
+        List<Book> allBooksRate = bookStatistic.getTopBookRate();
+        int brLimit = Math.min(40, allBooksRate.size());
+        view.getTopBookRateTable().setItems(FXCollections.observableArrayList(allBooksRate.subList(0, brLimit)));
+        view.getTitleBookRate().setText("XẾP HẠNG SÁCH CÓ TỈ LỆ HƯ HỎNG CAO NHẤT");
     }
 
     private void handleExportReport() {
