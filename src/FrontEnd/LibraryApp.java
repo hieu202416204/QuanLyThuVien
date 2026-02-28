@@ -151,15 +151,16 @@ public class LibraryApp extends Application {
     }
 
     private void initLayout() {
-        rootLayout = new BorderPane();
+        // --- Dùng StackPane để NavBar có thể đè lên TabPane ---
+        StackPane mainStack = new StackPane();
         primaryStage.setTitle("📚 " + LanguageManager.getText("app_title"));
 
         scene.getStylesheets().clear();
         java.net.URL cssUrl = getClass().getResource("/styles/styles.css");
         if (cssUrl != null) scene.getStylesheets().add(cssUrl.toExternalForm());
 
-        rootLayout.getStyleClass().remove("dark-mode");
-        if (this.isDarkMode) rootLayout.getStyleClass().add("dark-mode");
+        mainStack.getStyleClass().remove("dark-mode");
+        if (this.isDarkMode) mainStack.getStyleClass().add("dark-mode");
 
         tabPane = new TabPane();
         tabPane.getStyleClass().add("hidden-header-tab-pane");
@@ -168,7 +169,7 @@ public class LibraryApp extends Application {
         homeTabView = new HomeTabView();
         homeTabController = new HomeTabController(library, homeTabView);
 
-        // Tạo các Tab rỗng (Dummy Tabs) để giữ chỗ trên thanh menu
+        // Tạo các Tab rỗng
         Tab tHome = new Tab(LanguageManager.getText("tab.home"), homeTabView);
         Tab tGallery = new Tab(LanguageManager.getText("tab.gallery"), new Label("Loading..."));
         Tab tManageBook = new Tab(LanguageManager.getText("tab.manage_book"), new Label("Loading..."));
@@ -181,17 +182,68 @@ public class LibraryApp extends Application {
 
         tabPane.getTabs().addAll(tHome, tGallery, tManageBook, tUsers, tBorrow, tSearch, tHistory, tStats, tSettings);
 
-        // Lắng nghe sự kiện chuyển Tab để Lazy Load
         tabPane.getSelectionModel().selectedIndexProperty().addListener((obs, oldVal, newVal) -> {
             loadTabContent(newVal.intValue());
         });
 
+        // Tạo Navbar (thanh chứa các nút Tab)
         ScrollPane navBar = createScrollableNavBar(tabPane);
-        rootLayout.setTop(navBar);
-        rootLayout.setCenter(tabPane);
-        scene.setRoot(rootLayout);
-    }
 
+        // --- THIẾT LẬP HIỆU ỨNG ẨN/HIỆN NAVBAR ---
+//        // 1. Một "vùng cảm ứng" (Hover Zone) trong suốt nằm ở sát cạnh trên
+//        Region hoverZone = new Region();
+//        hoverZone.setPrefHeight(1); // Vùng cảm ứng
+//        hoverZone.setMaxHeight(1);
+//        hoverZone.setStyle("-fx-background-color: transparent;");
+//        StackPane.setAlignment(hoverZone, Pos.TOP_CENTER);
+
+        // 2. Định vị Navbar ở trên cùng và ẩn nó lên trên ngoài màn hình (-60px) ban đầu
+        StackPane.setAlignment(navBar, Pos.TOP_CENTER);
+        navBar.setMaxHeight(70);
+        navBar.setTranslateY(-60); // Đẩy Navbar lên khỏi màn hình 60px
+
+        // 3. Tạo hiệu ứng Animation trượt
+        javafx.animation.TranslateTransition slideDown = new javafx.animation.TranslateTransition(javafx.util.Duration.millis(200), navBar);
+        slideDown.setToY(0); // Trượt xuống vị trí 0 (hiện ra)
+
+        javafx.animation.TranslateTransition slideUp = new javafx.animation.TranslateTransition(javafx.util.Duration.millis(200), navBar);
+        slideUp.setToY(-60); // Trượt lên -60 (ẩn đi)
+
+        // 4. Bắt sự kiện chuột
+        // Khi chuột chạm vào vùng cảm ứng trên cùng -> Đổ Navbar xuống
+//        hoverZone.setOnMouseEntered(e -> {
+//            slideUp.stop();
+//            slideDown.play();
+//        });
+
+        // Để giữ Navbar không bị cuộn lên khi chuột đang nằm trên chính Navbar đó
+        navBar.setOnMouseEntered(e -> {
+            slideUp.stop();
+            slideDown.play();
+        });
+
+        // Khi chuột rời khỏi Navbar (đi xuống khu vực bảng) -> Cuộn Navbar lên
+        navBar.setOnMouseEntered(e -> {
+            slideUp.stop();
+            slideDown.play();
+        });
+        navBar.setOnMouseExited(e -> {
+            slideDown.stop();
+            slideUp.play();
+        });
+        scene.setOnMouseMoved(e -> {
+            if (e.getSceneY() <= 3) { // chỉ khi sát mép trên (3px)
+                slideUp.stop();
+                slideDown.play();
+            }
+        });
+        // --- RÁP CÁC LỚP LẠI ---
+        // Lớp 1: Nội dung chính (TabPane) chiếm trọn màn hình
+        // Lớp 2: Navbar (ẩn ở trên)
+        mainStack.getChildren().addAll(tabPane, navBar);
+
+        scene.setRoot(mainStack);
+    }
     /**
      * Khởi tạo Tab khi người dùng bấm vào (Lazy Loading)
      */
@@ -292,12 +344,14 @@ public class LibraryApp extends Application {
     }
 
     // ========================================================================
-    // 4. HELPER METHODS & OTHERS (GIỮ NGUYÊN)
+    // 4. HELPER METHODS & OTHERS
     // ========================================================================
 
     private ScrollPane createScrollableNavBar(TabPane tabPane) {
         HBox navBox = new HBox();
         navBox.getStyleClass().add("nav-bar-container");
+        navBox.setAlignment(Pos.CENTER);
+        navBox.setPadding(new javafx.geometry.Insets(10, 20, 10, 20));
 
         ToggleGroup tg = new ToggleGroup();
         for (int i = 0; i < tabPane.getTabs().size(); i++) {
@@ -308,7 +362,6 @@ public class LibraryApp extends Application {
             final int idx = i;
             btn.setOnAction(e -> tabPane.getSelectionModel().select(idx));
 
-            // Xử lý nút sáng lên khi chọn
             tabPane.getSelectionModel().selectedIndexProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal.intValue() == idx) btn.setSelected(true);
             });
@@ -330,6 +383,9 @@ public class LibraryApp extends Application {
         sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         sp.getStyleClass().add("nav-scroll-pane");
+
+        // Tạo đổ bóng để khi slide down nhìn giống như một cái khay rớt xuống
+        sp.setStyle("-fx-background-color: transparent; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 5);");
 
         return sp;
     }
